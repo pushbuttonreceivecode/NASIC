@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<!DOCTYPE boost_serialization>
+<boost_serialization signature="serialization::archive" version="10">
+<Options class_id="0" tracking_level="0" version="0">
+	<m_volume>15</m_volume>
+	<m_effects>18</m_effects>
+	<m_difficulty>1</m_difficulty>
+</Options>
+</boost_serialization>
+
