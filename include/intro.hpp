@@ -24,8 +24,9 @@ Permission is granted to anyone to use this software for any purpose, including 
 #ifndef INTRO_HPP
 #define INTRO_HPP
 
-#include <SFML/Graphics.hpp>
 #include <iostream>
+#include <SFML/Graphics.hpp>
+#include <interpolate.hpp>
 
 namespace nasic
 {

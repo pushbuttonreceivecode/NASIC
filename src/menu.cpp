@@ -36,8 +36,8 @@ nasic::menu::menu()
     if(!m_options.loadOptions(m_options, m_filename.c_str()))
     {
         std::cerr<<"Could not load options data from options.xml"<<std::endl;
-        m_initialVol = 3;
-        m_initialEff = 5;
+        m_initialVol = 15;
+        m_initialEff = 15;
         m_initialDif = 1;
     }
     else
@@ -50,11 +50,19 @@ nasic::menu::menu()
     }
 
     std::cout<<m_initialVol<<"\n"<<m_initialEff<<"\n"<<m_initialDif<<std::endl;
+
+    //load the transition sound file
+    if(!m_transitionBuff.loadFromFile("sound/transition.wav"))
+    {
+        std::cerr<<"Could not load transition.wav."<<std::endl;
+    }
+    m_transition.setBuffer(m_transitionBuff);
+    m_transition.setVolume(m_initialEff);
 }
 
 nasic::menu::~menu()
 {
-    //dtor
+
 }
 
 void nasic::menu::show(sf::RenderWindow& window)
@@ -84,6 +92,9 @@ void nasic::menu::show(sf::RenderWindow& window)
         return;
 
     m_choice = choice::s_undecided;
+
+    //play the transition sound...
+    m_transition.play();
 
     //set up menu resources
     sf::Font standardfont;
@@ -115,21 +126,27 @@ void nasic::menu::show(sf::RenderWindow& window)
     sf::Text play("Play", standardfont, 52);
     play.setOrigin(0.f, play.getGlobalBounds().height/2.f);
     play.setScale(m_scale, m_scale);
-    play.setPosition(0.f, window.getSize().y/2.f);
+    play.setPosition(scale*20.f, window.getSize().y/2.f);
 
     sf::Text info("Info", standardfont, 52);
     info.setOrigin(0.f, info.getGlobalBounds().height/2.f);
     info.setScale(m_scale, m_scale);
-    info.setPosition(play.getPosition().x, play.getPosition().y + (play.getGlobalBounds().height * 2.0f));
+    info.setPosition(scale*20.f, play.getPosition().y + (play.getGlobalBounds().height * 2.0f));
 
     sf::Text options("Options", standardfont, 52);
     options.setOrigin(0.f, options.getGlobalBounds().height/2.f);
     options.setScale(m_scale, m_scale);
-    options.setPosition(info.getPosition().x, info.getPosition().y + (info.getGlobalBounds().height * 2.0f));
+    options.setPosition(scale*20.f, info.getPosition().y + (info.getGlobalBounds().height * 2.0f));
 
     //set up hexgrid and starfield backgrounds
-    nasic::hexgrid hex(window, nasic::hexgrid::hexStyle::cyan, scale);
+    nasic::hexgrid hex(window, nasic::hexgrid::hexStyle::colorful, scale);
     starfield stars(window, starfield::starStyle::starsAndPlanets, scale);
+
+    //mask for fade in/out
+    sf::RectangleShape mask;
+    mask.setSize(sf::Vector2f(window.getSize().x,window.getSize().y));
+    mask.setPosition(0,0);
+    mask.setFillColor(sf::Color(0,0,0,255));
 
     sf::SoundBuffer menubuff;
     if(!menubuff.loadFromFile("sound/select.wav"))
@@ -138,14 +155,15 @@ void nasic::menu::show(sf::RenderWindow& window)
     }
     sf::Sound menusound;
     menusound.setBuffer(menubuff);
-    menusound.setVolume(m_initialEff*5.f);
+    menusound.setVolume(m_initialEff);
 
     sf::Music menumusic;
-    if(!menumusic.openFromFile("sound/title.ogg"))
+    if(!menumusic.openFromFile("sound/beepboop.wav"))
     {
-        std::cout<<"Could not open stream for title.ogg"<<std::endl;
+        std::cout<<"Could not open stream for beepboop.wav"<<std::endl;
     }
-    menumusic.setVolume(m_initialVol*5.f);
+    menumusic.setVolume(m_initialVol);
+    menumusic.setLoop(true);
     menumusic.play();
 
     //housekeeping variables for keeping track of the selection
@@ -160,6 +178,11 @@ void nasic::menu::show(sf::RenderWindow& window)
     sf::Clock tickClock;
     sf::Time timeSinceLastUpdate = sf::Time::Zero;
     sf::Time TimePerFrame = sf::seconds(1.f/60.f);
+    sf::Time fadeInFrames = sf::Time::Zero;
+    sf::Time fadeOutFrames = sf::Time::Zero;
+    sf::Time moveText = sf::Time::Zero;
+    sf::Time colorChanger = sf::Time::Zero;
+    int colorSwitch = 1;
 
     while(running)
     {
@@ -239,6 +262,7 @@ void nasic::menu::show(sf::RenderWindow& window)
                     && mousepos.x <= play.getPosition().x + play.getGlobalBounds().width
                     && mousepos.y <= play.getPosition().y + play.getGlobalBounds().height)
             {
+
                 //set selection to play
                 //and keep track of mouse over text
                 selection = 0;
@@ -269,10 +293,12 @@ void nasic::menu::show(sf::RenderWindow& window)
                     && mousepos.x <= info.getPosition().x + info.getGlobalBounds().width
                     && mousepos.y <= info.getPosition().y + info.getGlobalBounds().height)
             {
+
                 //set selection to info
                 //and keep track of mouse over text
                 selection = 1;
                 hovercount++;
+
 
                 //play sound according to mouse hover events
                 if(hovercount == 1)//because there are multiple mouse events we just want the first one
@@ -298,6 +324,7 @@ void nasic::menu::show(sf::RenderWindow& window)
                     && mousepos.x <= options.getPosition().x + options.getGlobalBounds().width
                     && mousepos.y <= options.getPosition().y + options.getGlobalBounds().height)
             {
+
                 //set selection to options
                 //and keep track of mouse over text
                 selection = 2;
@@ -331,43 +358,90 @@ void nasic::menu::show(sf::RenderWindow& window)
         while (timeSinceLastUpdate > TimePerFrame)
         {
             timeSinceLastUpdate -= TimePerFrame;
+
             stars.update(window,TimePerFrame);
-        }
 
-        //visual indicators of selection made
-        //as well as setting the choice enum accordingly
-        //to trigger the proper state
-        switch(selection)
-        {
-        case 0:
-        {
-            m_choice = choice::s_play;
-            play.setColor(sf::Color(255,0,255,255));
-            info.setColor(sf::Color(255,255,255,255));
-            options.setColor(sf::Color(255,255,255,255));
-        }
-        break;
+            fadeInFrames += TimePerFrame;
 
-        case 1:
-        {
-            m_choice = choice::s_info;
-            play.setColor(sf::Color(255,255,255,255));
-            info.setColor(sf::Color(255,55,0,255));
-            options.setColor(sf::Color(255,255,255,255));
-        }
-        break;
+            if(fadeInFrames.asSeconds() < 1.f)
+                mask.setFillColor(sf::Color(0,0,0,255-(unsigned int)interpolate::sineEaseIn(fadeInFrames.asSeconds(),0.f,255.f,1.f)));
 
-        case 2:
-        {
-            m_choice = choice::s_options;
-            play.setColor(sf::Color(255,255,255,255));
-            info.setColor(sf::Color(255,255,255,255));
-            options.setColor(sf::Color(0,255,0,255));
-        }
-        break;
+            if(fadeInFrames.asSeconds() > 1.f)//delayed for fade in
+            {
+                moveText += TimePerFrame;//for fixed movement of text below...
 
-        default:
-            break;
+                if(colorChanger.asSeconds() > 3.f)
+                {
+                    colorChanger = sf::Time::Zero;
+                    colorSwitch *= -1;
+                }
+
+                else
+                    colorChanger += TimePerFrame;
+
+                float r = interpolate::sineEaseIn(colorChanger.asSeconds(),0.f,255.f,2.f);
+                float g = interpolate::sineEaseIn(colorChanger.asSeconds(),0.f,255.f,2.f);
+                float b = interpolate::sineEaseIn(colorChanger.asSeconds(),0.f,255.f,2.f);
+
+                //visual indicators of selection made
+                //as well as setting the choice enum accordingly
+                //to trigger the proper state
+                if(moveText.asSeconds() < 1.f)
+                {
+                    play.move(scale*(m_winsizeX*.01f)*interpolate::backEaseInOut(moveText.asSeconds(), 0.f, 1.f, 1.f), 0.f);
+                    info.move(scale*(m_winsizeX*.01f)*interpolate::backEaseInOut(moveText.asSeconds(), 0.f, 1.f, 1.f), 0.f);
+                    options.move(scale*(m_winsizeX*.01f)*interpolate::backEaseInOut(moveText.asSeconds(), 0.f, 1.f, 1.f), 0.f);
+                }
+
+                switch(selection)
+                {
+                case 0:
+                {
+                    m_choice = choice::s_play;
+
+                    //set properties for the play option
+                    play.setColor(sf::Color(255,0,255,255));
+
+                    //set properties for the info option
+                    info.setColor(sf::Color(255,255,255,255));
+
+                    //set properties for the options option
+                    options.setColor(sf::Color(255,255,255,255));
+                }
+                break;
+
+                case 1:
+                {
+                    m_choice = choice::s_info;
+                    play.setColor(sf::Color(255,255,255,255));
+
+                    info.setColor(sf::Color(255,55,0,255));
+
+                    options.setColor(sf::Color(255,255,255,255));
+                }
+                break;
+
+                case 2:
+                {
+                    m_choice = choice::s_options;
+                    play.setColor(sf::Color(255,255,255,255));
+
+                    info.setColor(sf::Color(255,255,255,255));
+
+                    options.setColor(sf::Color(0,255,0,255));
+                }
+                break;
+
+                default:
+                    break;
+                }
+
+                //subtract result from 255 to fade from cyan(?) to green
+                if(colorSwitch == 1 && r < 255)
+                    title.setColor(sf::Color(255, 255, 255-b, 255));
+                if(colorSwitch == -1 && r < 255)
+                    title.setColor(sf::Color(255, 255, b, 255));
+            }
         }
 
         window.clear();
@@ -379,6 +453,7 @@ void nasic::menu::show(sf::RenderWindow& window)
         window.draw(play);
         window.draw(info);
         window.draw(options);
+        window.draw(mask);
         window.display();
     }
     return;

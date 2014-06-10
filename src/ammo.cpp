@@ -23,174 +23,208 @@ Permission is granted to anyone to use this software for any purpose, including 
 
 #include <ammo.hpp>
 
+nasic::ammo::ammo()
+{
+
+}
+
 nasic::ammo::ammo(sf::Uint32 type, sf::Vector2f initPos, const float& scale)
 {
     m_type = type;
     m_scale = scale;
+    m_velY = 0;//for missiles
+
+    ////////////////////////////////////
+    //initialize textures
+    ////////////////////////////////////
+    if(!m_shot.loadFromFile("img/shot.png"))
+    {
+        std::cerr<<"Could not load shot ammo texture"<<std::endl;
+    }
+
+    if(!m_fire.loadFromFile("img/fireshot.png"))
+    {
+        std::cerr<<"Could not load fireshot ammo texture"<<std::endl;
+    }
+
+    if(!m_slime.loadFromFile("img/slimeshot.png"))
+    {
+        std::cerr<<"Could not load slimeshot ammo texture"<<std::endl;
+    }
+
+    if(!m_spiral.loadFromFile("img/spiralshot.png"))
+    {
+        std::cerr<<"Could not load spiralshot ammo texture"<<std::endl;
+    }
+
+    if(!m_laser.loadFromFile("img/laser.png"))
+    {
+        std::cerr<<"Could not load laser ammo texture"<<std::endl;
+    }
+
+    if(!m_missile.loadFromFile("img/missile.png"))
+    {
+        std::cerr<<"Could not load laser ammo texture"<<std::endl;
+    }
 
     this->setPosition(initPos);
 
     switch(m_type)
     {
-        case warrior:
+        case nasic::ammo::ammoType::warrior:
         {
-            if(!m_tex.loadFromFile("img/shot.png"))
-            {
-                std::cerr<<"Could not load warrior ammo texture"<<std::endl;
-            }
+            this->setTexture(m_shot);
         }
         break;
-        case hunter:
+        case nasic::ammo::ammoType::hunter:
         {
-            if(!m_tex.loadFromFile("img/shot.png"))
-            {
-                std::cerr<<"Could not load hunter ammo texture"<<std::endl;
-            }
+            this->setTexture(m_shot);
         }
         break;
 
-        case guard:
+        case nasic::ammo::ammoType::guard:
         {
-            if(!m_tex.loadFromFile("img/shot.png"))
-            {
-                std::cerr<<"Could not load guard ammo texture"<<std::endl;
-            }
+            this->setTexture(m_shot);
         }
         break;
 
-        case special_warrior:
+        case nasic::ammo::ammoType::special_warrior:
         {
-            if(!m_tex.loadFromFile("img/shot.png"))
-            {
-                std::cerr<<"Could not load special warrior ammo texture"<<std::endl;
-            }
+            this->setTexture(m_shot);
         }
         break;
 
-        case special_hunter:
+        case nasic::ammo::ammoType::special_hunter:
         {
-            if(!m_tex.loadFromFile("img/shot.png"))
-            {
-                std::cerr<<"Could not load special hunter ammo texture"<<std::endl;
-            }
+            this->setTexture(m_shot);
         }
         break;
 
-        case special_guard:
+        case nasic::ammo::ammoType::special_guard:
         {
-            if(!m_tex.loadFromFile("img/shot.png"))
-            {
-                std::cerr<<"Could not load special guard ammo texture"<<std::endl;
-            }
+            this->setTexture(m_shot);
         }
         break;
 
-        case rhiians:
+        case nasic::ammo::ammoType::delsiriak:
         {
-            if(!m_tex.loadFromFile("img/shot.png"))
-            {
-                std::cerr<<"Could not load rhiians ammo texture"<<std::endl;
-            }
+            this->setTexture(m_fire);
         }
         break;
 
-        case agravu:
+        case nasic::ammo::ammoType::agravu:
         {
-            if(!m_tex.loadFromFile("img/shot.png"))
-            {
-                std::cerr<<"Could not load agravu ammo texture"<<std::endl;
-            }
+            this->setTexture(m_slime);
         }
         break;
 
-        case delsiriak:
+        case nasic::ammo::ammoType::gluorn:
         {
-            if(!m_tex.loadFromFile("img/shot.png"))
-            {
-                std::cerr<<"Could not load delsiriak ammo texture"<<std::endl;
-            }
+            this->setTexture(m_laser);
         }
         break;
 
-        case gluorn:
+        case nasic::ammo::ammoType::rhiians:
         {
-            if(!m_tex.loadFromFile("img/shot.png"))
-            {
-                std::cerr<<"Could not load gluorn ammo texture"<<std::endl;
-            }
+            this->setTexture(m_spiral);
         }
         break;
+
+        case nasic::ammo::ammoType::missile:
+        {
+            this->setTexture(m_missile);
+        }
+        break;
+
+        default:
+            break;
     }
+
     this->setScale(m_scale, m_scale);
-    this->setTexture(m_tex);
 }
 
 nasic::ammo::~ammo()
 {
-    //dtor
+
 }
 
 void nasic::ammo::fire(sf::Time dt)
 {
     switch(m_type)
     {
-        case warrior:
+        case nasic::ammo::ammoType::warrior:
         {
             this->move(0.f, m_scale*(-400*dt.asSeconds()));
         }
         break;
-        case hunter:
-        {
-            this->move(0.f, m_scale*(-400*dt.asSeconds()));
-        }
-        break;
-
-        case guard:
+        case nasic::ammo::ammoType::hunter:
         {
             this->move(0.f, m_scale*(-400*dt.asSeconds()));
         }
         break;
 
-        case special_warrior:
+        case nasic::ammo::ammoType::guard:
         {
             this->move(0.f, m_scale*(-400*dt.asSeconds()));
         }
         break;
 
-        case special_hunter:
+        case nasic::ammo::ammoType::special_warrior:
         {
             this->move(0.f, m_scale*(-400*dt.asSeconds()));
         }
         break;
 
-        case special_guard:
+        case nasic::ammo::ammoType::special_hunter:
         {
             this->move(0.f, m_scale*(-400*dt.asSeconds()));
         }
         break;
 
-        case rhiians:
+        case nasic::ammo::ammoType::special_guard:
         {
             this->move(0.f, m_scale*(-400*dt.asSeconds()));
         }
         break;
 
-        case agravu:
+        case nasic::ammo::ammoType::rhiians:
         {
-            this->move(0.f, m_scale*(-400*dt.asSeconds()));
+            this->move(0.f, m_scale*(400*dt.asSeconds()));
         }
         break;
 
-        case delsiriak:
+        case nasic::ammo::ammoType::agravu:
         {
-            this->move(0.f, m_scale*(-400*dt.asSeconds()));
+            this->move(0.f, m_scale*(400*dt.asSeconds()));
         }
         break;
 
-        case gluorn:
+        case nasic::ammo::ammoType::delsiriak:
         {
-            this->move(0.f, m_scale*(-400*dt.asSeconds()));
+            this->move(0.f, m_scale*(400*dt.asSeconds()));
         }
         break;
+
+        case nasic::ammo::ammoType::gluorn:
+        {
+            this->move(0.f, m_scale*(400*dt.asSeconds()));
+        }
+        break;
+
+        case nasic::ammo::ammoType::missile:
+        {
+            float terminalVelocity = 20.f;
+
+            if(m_velY >= terminalVelocity)
+                m_velY = terminalVelocity;
+            else
+                m_velY = m_scale*50.f*(interpolate::expoEaseIn(dt.asSeconds(), 0.f,1.f,3.f));
+
+            this->move(0.f, m_velY);
+        }
+        break;
+
+        default:
+            break;
     }
 }

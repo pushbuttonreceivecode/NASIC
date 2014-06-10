@@ -26,7 +26,11 @@ Permission is granted to anyone to use this software for any purpose, including 
 
 #include <iostream>
 #include <SFML/Graphics.hpp>
-#include <starfield.hpp>
+#include <SFML/Audio.hpp>
+#include <THOR/Shapes.hpp>
+#include <hexgrid.hpp>
+#include <opstruct.hpp>
+#include <interpolate.hpp>
 
 namespace nasic
 {
@@ -34,7 +38,7 @@ namespace nasic
     {
         public:
             info();
-            virtual ~info();
+            ~info();
             void show(sf::RenderWindow& window);
 
             const sf::Uint32 infoState(){return m_infostate;};
@@ -43,11 +47,25 @@ namespace nasic
             {
                 uninitialized,
                 showing,
-                done
+                done,
             };
 
         private:
             static sf::Uint32 m_infostate;
+            nasic::opstruct m_options;
+            float m_vol;
+            float m_eff;
+            float m_diff;
+            std::string m_filename;
+            sf::Uint32 m_initialVol;
+            sf::Uint32 m_initialEff;
+            sf::Uint32 m_initialDif;
+            sf::SoundBuffer m_transitionBuff;
+            sf::Sound m_transition;
+            sf::Sprite m_bgOne;
+            sf::Sprite m_bgTwo;
+            sf::Sprite m_bgThree;
+            sf::Sprite m_bgFour;
     };
 }
 

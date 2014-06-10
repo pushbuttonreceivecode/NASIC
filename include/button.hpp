@@ -49,7 +49,8 @@ namespace gui
         {
             normal = 0,
             hovered = 1,
-            clicked = 2
+            clicked = 2,
+            active = 3
         };
     };
 
@@ -71,6 +72,8 @@ namespace gui
             void setBorderThickness(float t){m_borderThickness = t;};
             void setBorderRadius(float r){m_borderRadius = r;};
             void setPosition(sf::Vector2f position){m_position = position;};
+            void setLabelOffset(sf::Vector2f offset){m_offset = offset;};
+            void setScale(float x,float y){m_scale = sf::Vector2f(x,y);};
             void setSize(unsigned int size);
             void setText(std::string s)
             {
@@ -79,6 +82,11 @@ namespace gui
             };
             void setStyle(sf::Uint32 style);
             void setFont(sf::Font& font);
+
+            void makeActive(bool a){m_active = a;};
+            bool hasActive(){return m_active;};
+            bool isActive(){return m_isactive;};
+            void setActive(bool a){m_isactive = a;};
 
             sf::Vector2f getPosition(){return m_position;};
             sf::Vector2f getDimensions(){return sf::Vector2f(m_button.getGlobalBounds().width, m_button.getGlobalBounds().height);};
@@ -89,6 +97,8 @@ namespace gui
         private:
 
             void init();
+            void scale();
+            void offsetLabel();
 
             virtual void draw(sf::RenderTarget& target,sf::RenderStates states) const;
 
@@ -105,9 +115,13 @@ namespace gui
             float m_borderThickness;
             float m_borderRadius;
             sf::Vector2f m_size;
+            sf::Vector2f m_scale;
             sf::Vector2f m_position;
+            sf::Vector2f m_offset;
             sf::Uint32 m_style;
             sf::Uint32 m_btnstate;
+            bool m_active;
+            bool m_isactive;
 
             sf::ConvexShape m_button;
             sf::Font m_font;

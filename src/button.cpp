@@ -39,6 +39,13 @@ gui::button::button(std::string s, sf::Font& font, sf::Vector2f position, sf::Ui
     //set button style
     m_style = style;
 
+    //default padding is zero
+    m_offset = sf::Vector2f(0.f,0.f);
+
+    //default to no active state
+    m_active = false;
+    setActive(false);
+
     switch(m_style)
     {
         case gui::style::none:
@@ -103,19 +110,20 @@ gui::button::button(std::string s, sf::Font& font, sf::Vector2f position, sf::Ui
     m_borderRadius = 5.f;
     m_borderThickness = 0.f;
     m_size = sf::Vector2f(m_text.getGlobalBounds().width * 1.5f, m_text.getGlobalBounds().height * 1.5f);
+    m_scale = sf::Vector2f(1.f,1.f);
 
     m_button = thor::Shapes::roundedRect(m_size, m_borderRadius, m_bgNormal, m_borderThickness, m_border);
     m_button.setOrigin(m_button.getGlobalBounds().width/2, m_button.getGlobalBounds().height/2);
     m_button.setPosition(m_position);
 
-    sf::Vector2f textPosition = sf::Vector2f(m_button.getPosition().x, m_button.getPosition().y - m_button.getGlobalBounds().height/4);
+    sf::Vector2f textPosition = sf::Vector2f(m_button.getPosition().x, m_button.getPosition().y - m_text.getGlobalBounds().height/2);
 
     m_text.setPosition(textPosition);
 
     m_shadow.setFont(font);
     m_shadow = m_text;
     m_shadow.setOrigin(m_shadow.getGlobalBounds().width/2, m_shadow.getGlobalBounds().height/2);
-    m_shadow.setPosition(m_text.getPosition().x + 3.f, m_text.getPosition().y + 3.f);
+    m_shadow.setPosition(textPosition.x + 3.f, textPosition.y + 3.f);
 }
 
 gui::button::~button()
@@ -200,6 +208,19 @@ void gui::button::setFont(sf::Font& font)
     m_shadow.setFont(font);
 }
 
+void gui::button::offsetLabel()
+{
+    m_text.setPosition(m_text.getPosition() + m_offset);
+    m_shadow.setPosition(m_shadow.getPosition() + m_offset);
+}
+
+void gui::button::scale()
+{
+    m_text.setScale(m_scale);
+    m_shadow.setScale(m_scale);
+    m_button.setScale(m_scale);
+}
+
 void gui::button::update(sf::Event& e, sf::RenderWindow& window)
 {
     //perform updates for settings from user
@@ -212,11 +233,11 @@ void gui::button::update(sf::Event& e, sf::RenderWindow& window)
             m_button.setOrigin(m_button.getGlobalBounds().width/2, m_button.getGlobalBounds().height/2);
             m_button.setPosition(m_position);
             m_text.setOrigin(m_text.getGlobalBounds().width/2, m_text.getGlobalBounds().height/2);
-            sf::Vector2f textPosition = sf::Vector2f(m_button.getPosition().x, m_button.getPosition().y - m_button.getGlobalBounds().height/4);
+            sf::Vector2f textPosition = sf::Vector2f(m_button.getPosition().x, m_button.getPosition().y - m_text.getGlobalBounds().height/2);
             m_text.setPosition(textPosition);
             m_text.setColor(m_textNormal);
             m_shadow.setOrigin(m_shadow.getGlobalBounds().width/2, m_shadow.getGlobalBounds().height/2);
-            m_shadow.setPosition(m_text.getPosition().x + 3.f, m_text.getPosition().y + 3.f);
+            m_shadow.setPosition(textPosition.x + 3.f, textPosition.y + 3.f);
             m_shadow.setColor(sf::Color(0,0,0));
         }
         break;
@@ -228,11 +249,11 @@ void gui::button::update(sf::Event& e, sf::RenderWindow& window)
             m_button.setOrigin(m_button.getGlobalBounds().width/2, m_button.getGlobalBounds().height/2);
             m_button.setPosition(m_position);
             m_text.setOrigin(m_text.getGlobalBounds().width/2, m_text.getGlobalBounds().height/2);
-            sf::Vector2f textPosition = sf::Vector2f(m_button.getPosition().x, m_button.getPosition().y - m_button.getGlobalBounds().height/4);
+            sf::Vector2f textPosition = sf::Vector2f(m_button.getPosition().x, m_button.getPosition().y - m_text.getGlobalBounds().height/2);
             m_text.setPosition(textPosition);
             m_text.setColor(m_textNormal);
             m_shadow.setOrigin(m_shadow.getGlobalBounds().width/2, m_shadow.getGlobalBounds().height/2);
-            m_shadow.setPosition(m_text.getPosition().x + 3.f, m_text.getPosition().y + 3.f);
+            m_shadow.setPosition(textPosition.x + 3.f, textPosition.y + 3.f);
             m_shadow.setColor(sf::Color(0,0,0));
         }
         break;
@@ -244,11 +265,11 @@ void gui::button::update(sf::Event& e, sf::RenderWindow& window)
             m_button.setOrigin(m_button.getGlobalBounds().width/2, m_button.getGlobalBounds().height/2);
             m_button.setPosition(m_position);
             m_text.setOrigin(m_text.getGlobalBounds().width/2, m_text.getGlobalBounds().height/2);
-            sf::Vector2f textPosition = sf::Vector2f(m_button.getPosition().x, m_button.getPosition().y - m_button.getGlobalBounds().height/4);
+            sf::Vector2f textPosition = sf::Vector2f(m_button.getPosition().x, m_button.getPosition().y - m_text.getGlobalBounds().height/2);
             m_text.setPosition(textPosition);
             m_text.setColor(m_textNormal);
             m_shadow.setOrigin(m_shadow.getGlobalBounds().width/2, m_shadow.getGlobalBounds().height/2);
-            m_shadow.setPosition(m_text.getPosition().x + 3.f, m_text.getPosition().y + 3.f);
+            m_shadow.setPosition(textPosition.x + 3.f, textPosition.y + 3.f);
             m_shadow.setColor(sf::Color(0,0,0));
         }
         break;
@@ -256,15 +277,16 @@ void gui::button::update(sf::Event& e, sf::RenderWindow& window)
         case gui::style::clean:
         {
             m_size = sf::Vector2f(m_text.getGlobalBounds().width * 1.5f, m_text.getGlobalBounds().height * 1.75f);
+
             m_button = thor::Shapes::roundedRect(m_size, m_borderRadius, m_bgNormal, m_borderThickness, m_border);
             m_button.setOrigin(m_button.getGlobalBounds().width/2, m_button.getGlobalBounds().height/2);
             m_button.setPosition(m_position);
             m_text.setOrigin(m_text.getGlobalBounds().width/2, m_text.getGlobalBounds().height/2);
-            sf::Vector2f textPosition = sf::Vector2f(m_button.getPosition().x, m_button.getPosition().y - m_button.getGlobalBounds().height/4);
+            sf::Vector2f textPosition = sf::Vector2f(m_button.getPosition().x, m_button.getPosition().y - m_text.getGlobalBounds().height/2);
             m_text.setPosition(textPosition);
             m_text.setColor(m_textNormal);
             m_shadow.setOrigin(m_shadow.getGlobalBounds().width/2, m_shadow.getGlobalBounds().height/2);
-            m_shadow.setPosition(m_text.getPosition().x + 3.f, m_text.getPosition().y + 3.f);
+            m_shadow.setPosition(textPosition.x + 3.f, textPosition.y + 3.f);
             m_shadow.setColor(sf::Color(0,0,0));
         }
         break;
@@ -302,11 +324,16 @@ void gui::button::update(sf::Event& e, sf::RenderWindow& window)
         {
             if(mouseInButton)
             {
+                if(hasActive())
+                    setActive(true);
+                else
+                    setActive(false);
                 m_btnstate = gui::state::clicked;
             }
 
             else
             {
+                setActive(false);
                 m_btnstate = gui::state::normal;
             }
         }
@@ -333,6 +360,11 @@ void gui::button::update(sf::Event& e, sf::RenderWindow& window)
         }
     }
 
+    if(isActive())
+        m_btnstate = gui::state::active;
+    else
+        m_btnstate = m_btnstate;
+
     switch(m_btnstate)
     {
     case gui::state::normal:
@@ -355,7 +387,20 @@ void gui::button::update(sf::Event& e, sf::RenderWindow& window)
         m_text.setColor(m_textClicked);
     }
     break;
+
+    case gui::state::active:
+    {
+        m_button.setFillColor(m_bgClicked);
+        m_text.setColor(m_textClicked);
     }
+    break;
+    }
+
+    //this can be used to fix alignment issues and add padding to the label
+    //defaults to 0 - see in the constructor
+    offsetLabel();
+
+    scale();
 }
 
 void gui::button::draw(sf::RenderTarget& target,sf::RenderStates states) const

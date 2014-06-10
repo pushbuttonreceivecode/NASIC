@@ -42,6 +42,12 @@ namespace nasic
 
             sf::Vector2f getAABB();
 
+            void setId(sf::Vector2u id){m_id = id;};
+            sf::Vector2u getId(){return m_id;};
+
+            void setInitialPosition(sf::Vector2f pos){m_initialPos = pos;};
+            sf::Vector2f getInitialPosition(){return m_initialPos;};
+
             void damage(int d);
             int getHealth(){return m_data.health;};
 
@@ -78,6 +84,8 @@ namespace nasic
 
             sf::Uint32 m_type;
             sf::Uint32 m_state;
+            sf::Vector2u m_id;
+            sf::Vector2f m_initialPos;
 
             sf::Vector2f m_aabb;
 

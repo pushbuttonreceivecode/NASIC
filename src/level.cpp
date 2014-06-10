@@ -23,7 +23,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 
 #include <level.hpp>
 
-nasic::level::level()
+nasic::level::level(sf::RenderWindow& window)
 {
     using nasic::level;
     m_levelstate = levelstate::uninitialized;
@@ -31,19 +31,80 @@ nasic::level::level()
     if(!m_options.loadOptions(m_options, "data/options.xml"))
     {
         std::cerr<<"Could not load options.xml"<<std::endl;
-        m_musicVolume = 3;
-        m_effectsVolume = 5;
+        m_musicVolume = 15;
+        m_effectsVolume = 15;
         m_difficulty = 1;
     }
 
     m_musicVolume = m_options.m_volume;
     m_effectsVolume = m_options.m_effects;
     m_difficulty = m_options.m_difficulty;
+
+    //text
+    if(!m_myfont.loadFromFile("fonts/contb.ttf"))
+    {
+        std::cerr<<"Could not load contb.ttf"<<std::endl;
+    }
+
+    if(!m_hudFont.loadFromFile("fonts/PressStart2P.ttf"))
+    {
+        std::cerr<<"Could not load PressStart2P.ttf"<<std::endl;
+    }
+
+    //set initialization status of the enemy waves
+    setEnemyInitStatus(false);
+
+    //initialize number of lives
+    switch(m_difficulty)
+    {
+    case 0:
+    {
+        m_numLives = 4;
+    }
+    break;
+    case 1:
+    {
+        m_numLives = 3;
+    }
+    break;
+    case 2:
+    {
+        m_numLives = 2;
+    }
+    break;
+    case 3:
+    {
+        m_numLives = 1;
+    }
+    break;
+    default:
+        m_numLives = 3;
+        break;
+    }
+
+    //initialize score and bonus data
+    m_score = 0;
+    m_hits = 0;
+    m_misses = 0;
+    m_timeBonusFactor = 0;
+    m_survivalBonus = 0;
+    m_accuracyBonus = 0;
+    m_timeBonusMessage.setFont(m_hudFont);
+    m_timeBonusMessage.setCharacterSize(18);
+    m_survivalBonusMessage.setFont(m_hudFont);
+    m_survivalBonusMessage.setCharacterSize(18);
+    m_accuracyBonusMessage.setFont(m_hudFont);
+    m_accuracyBonusMessage.setCharacterSize(18);
+    m_timeBonusMessage.setPosition(window.getSize().x*.9f, window.getSize().y/4.f);
+    m_survivalBonusMessage.setPosition(window.getSize().x*.9f, window.getSize().y/6.f);
+    m_accuracyBonusMessage.setPosition(window.getSize().x*.9f, window.getSize().y/12.f);
 }
 
 nasic::level::~level()
 {
     delete m_enemy;//delete enemy pointer
+    delete m_ammoPtr;//delete ammo pointer
+    //delete m_particle;//delete the particle
 }
 
 void nasic::level::show(sf::RenderWindow& window)
@@ -55,27 +116,29 @@ void nasic::level::show(sf::RenderWindow& window)
     //we're getting the video mode and creating a scale
     //variable for the drawables using 800 as the base
     //800*600 will be the smallest screen supported
-    //*****KEEPING IN MIND****
+    //*****KEEPING IN MIND*****
     //we're blowing up small images...
     //this is not ideal for non-retro-looking sprites
     /////////////////////////////////////////////////////
     sf::VideoMode mode = sf::VideoMode::getDesktopMode();
-    float scale = mode.width/800.f;
+    m_scale = mode.width/800.f;
+    m_scaleY = mode.height/600.f;
+
     m_winsizeX = mode.width;
     m_winsizeY = mode.height;
 
     sf::ContextSettings settings;
 
     settings = window.getSettings();
-    std::cout<<settings.majorVersion<<std::endl;
-    std::cout<<settings.minorVersion<<std::endl;
-    std::cout<<settings.antialiasingLevel<<std::endl;
-    std::cout<<settings.stencilBits<<"\n"<<settings.depthBits<<std::endl;
+    //std::cout<<settings.majorVersion<<std::endl;
+    //std::cout<<settings.minorVersion<<std::endl;
+    //std::cout<<settings.antialiasingLevel<<std::endl;
+    //std::cout<<settings.stencilBits<<"\n"<<settings.depthBits<<std::endl;
 
     window.setKeyRepeatEnabled(false);
     window.setFramerateLimit(60);//set the refresh limit to the current frame rate 60fps
 
-    std::cout<<"Video mode is: "<<mode.width<<"\n"<<"Scale factor is: "<<scale<<std::endl;
+    //std::cout<<"Video mode is: "<<mode.width<<"\n"<<"Scale factor is: "<<m_scale<<std::endl;
 
     //bail if the options are not in uninitialized state
     if(!m_levelstate == levelstate::uninitialized)
@@ -85,15 +148,32 @@ void nasic::level::show(sf::RenderWindow& window)
 
     //create level stuff
 
-    //sound
-    sf::SoundBuffer shotBuff;
-    if(!shotBuff.loadFromFile("sound/shot.wav"))
+    //initialize sounds and music
+    if(!m_bgSndBuffer.loadFromFile("sound/beepboop.wav"))
+    {
+        std::cerr<<"Could not load beepboop.wav"<<std::endl;
+    }
+
+    m_bgSnd.setBuffer(m_bgSndBuffer);
+    m_bgSnd.setVolume(m_effectsVolume);
+    m_bgSnd.setLoop(true);
+    m_bgSnd.play();
+
+    if(!m_music.openFromFile("sound/theme.ogg"))
+    {
+        std::cerr<<"Could not load theme.ogg"<<std::endl;
+    }
+
+    m_music.setVolume(m_musicVolume);
+    m_music.setLoop(true);
+
+    if(!m_shotBuff.loadFromFile("sound/shot.wav"))
     {
         std::cerr<<"Could not load shot.wav"<<std::endl;
     }
-    sf::Sound shot;
-    shot.setBuffer(shotBuff);
-    shot.setVolume(m_effectsVolume);
+
+    m_shot.setBuffer(m_shotBuff);
+    m_shot.setVolume(m_effectsVolume);
 
     //set up the sound buffers for the explosion sound
     if(!m_explodBuff.loadFromFile("sound/explosion.wav"))
@@ -109,38 +189,151 @@ void nasic::level::show(sf::RenderWindow& window)
 
     m_explosion.setVolume(m_effectsVolume);
 
-    //text
-    sf::Font myfont;
-    if(!myfont.loadFromFile("fonts/PressStart2P.ttf"))
-    {
-        std::cerr<<"Could not load PressStart2P.ttf"<<std::endl;
-    }
-
-    sf::Text score("Score ", myfont, 16);
-    score.setOrigin(score.getGlobalBounds().width/2.f, score.getGlobalBounds().height/2.f);
-    score.setScale(scale, scale);
-    score.setPosition(score.getGlobalBounds().width, m_winsizeY/12.f);
-
-    sf::Text lives("Lives ", myfont, 16);
-    lives.setOrigin(lives.getGlobalBounds().width/2.f, lives.getGlobalBounds().height/2.f);
-    lives.setScale(scale, scale);
-    lives.setPosition(m_winsizeX/2.f, m_winsizeY/12.f);
-
-    starfield stars(window, starfield::starStyle::starsAndPlanets, scale);
-
-    //set up enemy stuff
-    initEnemies(window, 4, 10, scale);
-    bool dir = 0;
-
     //set up player stuff
-    player hero(nasic::player::shipType::warrior, scale);
+    player hero(nasic::player::shipType::warrior, m_scale);
     hero.setPosition(m_winsizeX/2.f, m_winsizeY/1.25f);
+    sf::Uint32 initialLives =  m_numLives;
+    sf::Uint32 accuracyRatio = 0;
     bool moveleft = false;
     bool moveright = false;
     bool moveup = false;
     bool movedown = false;
     bool shooting = false;
     sf::Clock ammoClock;
+
+    sf::Texture lifeTexture;
+    switch(hero.getType())
+    {
+    case nasic::player::shipType::warrior:
+    {
+        if(!lifeTexture.loadFromFile("img/warrior.png"))
+        {
+            std::cerr<<"Could not load warrior.png"<<std::endl;
+        }
+    }
+    break;
+
+    case nasic::player::shipType::hunter:
+    {
+        if(!lifeTexture.loadFromFile("img/hunter.png"))
+        {
+            std::cerr<<"Could not load hunter.png"<<std::endl;
+        }
+    }
+    break;
+
+    case nasic::player::shipType::guard:
+    {
+        if(!lifeTexture.loadFromFile("img/guard.png"))
+        {
+            std::cerr<<"Could not load guard.png"<<std::endl;
+        }
+    }
+    break;
+
+    default:
+        break;
+    }
+
+    //set up for killer
+    sf::Texture blood;
+    if(!blood.loadFromFile("img/blood.png"))
+    {
+        std::cerr<<"Could not load blood.png"<<std::endl;
+    }
+
+    m_killer.init(window, m_scale);
+    int killerDirection = 1;
+    sf::SoundBuffer killerBuff;
+    if(!killerBuff.loadFromFile("sound/bossDrone.wav"))
+    {
+        std::cerr<<"Could not load bossDrone.wav"<<std::endl;
+    }
+    sf::Sound killerDrone;
+    killerDrone.setBuffer(killerBuff);
+    killerDrone.setVolume(m_effectsVolume);
+    killerDrone.setLoop(true);
+
+    sf::Text bossHealthLabel("BOSS:", m_hudFont, 16);
+    bossHealthLabel.setScale(m_scale, m_scale);
+    bossHealthLabel.setColor(sf::Color(255,255,255,200));
+    bossHealthLabel.setPosition(m_scale*10.f, m_winsizeY*.91f);
+    sf::Uint32 bossMaxHealth = m_killer.getHealth();
+
+    sf::RectangleShape bossHealth;
+    bossHealth.setFillColor(sf::Color(200,0,0,100));
+    bossHealth.setScale(m_scale,m_scale);
+    bossHealth.setSize(sf::Vector2f(m_scale*m_killer.getHealth(),m_scale*5.f));
+    bossHealth.setPosition(bossHealthLabel.getPosition().x + bossHealthLabel.getGlobalBounds().width, bossHealthLabel.getPosition().y);
+
+    sf::Text score("Score: ", m_hudFont, 16);
+    score.setScale(m_scale, m_scale);
+    score.setColor(sf::Color(255,255,255,200));
+    score.setPosition(m_winsizeX*.65f, m_scale*10.f);
+    m_scoreLabel.setFont(m_hudFont);
+    m_scoreLabel.setString(toString(m_score));
+    m_scoreLabel.setColor(sf::Color(0,200,0,200));
+    m_scoreLabel.setCharacterSize(16);
+    m_scoreLabel.setScale(m_scale,m_scale);
+    m_scoreLabel.setPosition(score.getPosition().x + score.getGlobalBounds().width, score.getPosition().y);
+
+    sf::Text lives("Lives: ", m_hudFont, 16);
+    lives.setScale(m_scale, m_scale);
+    lives.setColor(sf::Color(255,255,255,200));
+    lives.setPosition(m_scale*10.f, m_winsizeY*.95f);
+
+    sf::Text lifeLabel("Life:", m_hudFont, 16);
+    lifeLabel.setScale(m_scale, m_scale);
+    lifeLabel.setColor(sf::Color(255,255,255,200));
+    lifeLabel.setPosition(m_scale*10.f,m_scale*10.f);
+    sf::Uint32 maxHealth = hero.getHealth();
+
+    sf::RectangleShape life;
+    life.setFillColor(sf::Color(0,255,0,100));
+    life.setScale(m_scale,m_scale);
+    life.setSize(sf::Vector2f(m_scale*hero.getHealth(),m_scale*5.f));
+    life.setPosition(lifeLabel.getPosition().x + lifeLabel.getGlobalBounds().width, lifeLabel.getPosition().y);
+
+    m_life.setTexture(lifeTexture);
+    m_life.setScale(m_scale/2.f,m_scale/2.f);
+    m_life.setOrigin(0.f,m_life.getGlobalBounds().height/5.f);
+    for(int i=1; i<m_numLives; i++)
+    {
+        if(i==1)
+        {
+            m_life.setPosition(m_life.getGlobalBounds().width + m_scale*lives.getGlobalBounds().width/2.f, lives.getPosition().y);
+        }
+        else
+        {
+            m_life.setPosition(i*m_life.getGlobalBounds().width + m_scale*lives.getGlobalBounds().width/2.f, lives.getPosition().y);
+        }
+
+        m_lives.push_back(m_life);
+    }
+
+    m_timeLabel.setFont(m_hudFont);
+    m_timeLabel.setString("Time: ");
+    m_timeLabel.setCharacterSize(16);
+    m_timeLabel.setScale(m_scale,m_scale);
+    m_timeLabel.setPosition(m_winsizeX*.65f, m_winsizeY*.95f);
+
+    sf::RectangleShape bottomLine;
+    bottomLine.setSize(sf::Vector2f(m_winsizeX, 1.f));
+    bottomLine.setFillColor(sf::Color(200,0,0,200));
+    bottomLine.setPosition(0,m_winsizeY*.9f);
+
+    sf::RectangleShape bottomBG;
+    bottomBG.setSize(sf::Vector2f(m_winsizeX, m_winsizeY - (m_winsizeY*.9f)));
+    bottomBG.setFillColor(sf::Color(100,100,100,200));
+    bottomBG.setPosition(0,m_winsizeY*.9f);
+
+    starfield stars(window, starfield::starStyle::starsAndPlanets, m_scale);
+
+    //set up enemy stuff
+    initEnemies(window, 4, 10, m_scale);
+    m_wave = 1;
+    bool doBossFight = false;
+    m_dir = 1;
 
     //effects stuff...
     sf::Texture expTexture;
@@ -150,14 +343,105 @@ void nasic::level::show(sf::RenderWindow& window)
     }
 
     m_explosionSpr.setTexture(expTexture);
-    m_explosionSpr.setScale(scale,scale);
+    m_explosionSpr.setScale(m_scale,m_scale);
     nasic::addFrames(m_expFrames, 24, 25, 0, 0, 8);
     m_expAnim.addAnimation("explode", m_expFrames, sf::seconds(1.f));
+
+    //initialize the scale of intro and boss messages
+    m_introMessage.setScale(0.f,0.f);
+    m_bossMessage.setScale(0.f,0.f);
+
+    //initialize pause stuff...
+    sf::RectangleShape pauseBg;
+    pauseBg.setSize(sf::Vector2f(m_scale*400.f, m_scaleY*200.f));
+    pauseBg.setFillColor(sf::Color(0,255,0,200));
+    pauseBg.setOrigin(pauseBg.getGlobalBounds().width/2.f, pauseBg.getGlobalBounds().height/2.f);
+    pauseBg.setPosition(window.getSize().x/2.f, window.getSize().y/2.f);
+
+    thor::ConcaveShape rightCorner;
+    rightCorner.setPointCount(4);
+    rightCorner.setPoint(0, sf::Vector2f(pauseBg.getGlobalBounds().width, pauseBg.getGlobalBounds().height));
+    rightCorner.setPoint(1, sf::Vector2f(pauseBg.getGlobalBounds().width*.75f, pauseBg.getGlobalBounds().height));
+    rightCorner.setPoint(2, sf::Vector2f(pauseBg.getGlobalBounds().width*.9f, pauseBg.getGlobalBounds().height*.95f));
+    rightCorner.setPoint(3, sf::Vector2f(pauseBg.getGlobalBounds().width, pauseBg.getGlobalBounds().height*.8f));
+    rightCorner.setPosition(pauseBg.getPosition().x - pauseBg.getGlobalBounds().width/2.1f, pauseBg.getPosition().y - pauseBg.getGlobalBounds().height/2.1f);
+    rightCorner.setFillColor(sf::Color(0,255,255,255));
+
+    thor::ConcaveShape leftCorner;
+    leftCorner.setPointCount(7);
+    leftCorner.setPoint(0, sf::Vector2f(0.f, 0.f));
+    leftCorner.setPoint(1, sf::Vector2f(pauseBg.getGlobalBounds().width/2.f, 0.f));
+    leftCorner.setPoint(2, sf::Vector2f(pauseBg.getGlobalBounds().width/2.5f, pauseBg.getGlobalBounds().height/8.f));
+    leftCorner.setPoint(3, sf::Vector2f(pauseBg.getGlobalBounds().width/3.f, pauseBg.getGlobalBounds().height/10.f));
+    leftCorner.setPoint(4, sf::Vector2f(pauseBg.getGlobalBounds().width/8.f, pauseBg.getGlobalBounds().height/6.f));
+    leftCorner.setPoint(5, sf::Vector2f(pauseBg.getGlobalBounds().width/16.f, pauseBg.getGlobalBounds().height));
+    leftCorner.setPoint(6, sf::Vector2f(0.f, pauseBg.getGlobalBounds().height));
+    leftCorner.setPosition(pauseBg.getPosition().x - pauseBg.getGlobalBounds().width/1.9f, pauseBg.getPosition().y - pauseBg.getGlobalBounds().height/1.9f);
+    leftCorner.setFillColor(sf::Color(255,0,255,255));
+
+    m_pauseOverlay = sf::Text("-PAUSED-", m_myfont, 128);
+    m_pauseOverlay.setOrigin(m_pauseOverlay.getGlobalBounds().width/2.f, m_pauseOverlay.getGlobalBounds().height/2.f);
+    m_pauseOverlay.setColor(sf::Color(200,0,0,200));
+    m_pauseOverlay.setPosition(pauseBg.getPosition().x, pauseBg.getPosition().y);
+
+    int pauseSwitch = -1;
+    int pauseCounter = 0;
+    if(!m_pauseBuffer.loadFromFile("sound/pause.wav"))
+    {
+        std::cerr<<"Could not load pause.wav"<<std::endl;
+    }
+    m_pauseSnd.setBuffer(m_pauseBuffer);
+    m_pauseSnd.setVolume(m_effectsVolume);
+    m_pauseSnd.setLoop(false);
 
     //time stuff...
     sf::Clock tickClock;
     sf::Time timeSinceLastUpdate = sf::Time::Zero;
     sf::Time TimePerFrame = sf::seconds(1.f/60.f);
+    m_enemyMoveFrames = sf::Time::Zero;
+    sf::Time enemyFireFrames = sf::Time::Zero;
+    sf::Time pauseFrames = sf::Time::Zero;
+    sf::Time introFrames = sf::Time::Zero;
+    sf::Time bossIntroFrames = sf::Time::Zero;
+    sf::Time bossMotionFrames = sf::Time::Zero;
+    sf::Time bossMandibleFrames = sf::Time::Zero;
+    sf::Time bossCannonFrames = sf::Time::Zero;
+    sf::Time bossMissileFrames = sf::Time::Zero;
+    sf::Time bossGunFrames = sf::Time::Zero;
+    sf::Time bossBurstFrames = sf::Time::Zero;
+    sf::Time missileAmmoFrames = sf::Time::Zero;
+    sf::Time missileBurstFrames = sf::Time::Zero;
+    sf::Time particleFrames = sf::Time::Zero;
+
+    //////////////////////////////////////////////
+    //Particle system for boss fight
+    //////////////////////////////////////////////
+
+    // Load texture
+	sf::Texture particleTexture;
+	if (!particleTexture.loadFromFile("img/particle.png"))
+	{
+	    std::cerr<<"Could not load particle.png"<<std::endl;
+	}
+
+    m_particle.setTexture(particleTexture);
+    m_particle.setColor(sf::Color(255,255,255,255));
+
+	std::list<nasic::particle> particles;
+	std::list<nasic::particle>::iterator particleIt;
+
+	//some stuff to uniformly distribute the particles
+	std::mt19937 engine;
+    std::uniform_int_distribution<int> distr(m_scale*10, (int)m_killer.getAABB().x/4);
+    auto randomizer = std::bind(distr, engine);
+    thor::Distribution<int> thorDistr(randomizer);
+
+    int mandibleRotationDirection = 1;
+    int tempcounter = 0;
+    sf::Time bonusFrames = sf::Time::Zero;
+    sf::Time messageFrames = sf::Time::Zero;
+    int colorSwitch = 1;
+    sf::Time timeClock;
 
     bool running = true;
     sf::Event e;
@@ -171,13 +455,59 @@ void nasic::level::show(sf::RenderWindow& window)
                 return;
             }
 
-            if(e.type == sf::Event::KeyPressed)
+            if(e.type == sf::Event::KeyPressed && (introFrames.asSeconds() > 10.f && bossIntroFrames.asSeconds() > 10.f))
             {
                 switch(e.key.code)
                 {
                 case sf::Keyboard::Escape:
                 {
                     m_levelstate = levelstate::exit;
+                    return;
+                }
+                break;
+
+                case sf::Keyboard::Delete://super secret enemy clearing mechanism ;)
+                {
+                    m_enemies.clear();
+                }
+                break;
+
+                case sf::Keyboard::B:
+                {
+                    m_wave = 4;
+                }
+                break;
+
+                case sf::Keyboard::K://super secret player killswitch
+                {
+                    if(m_numLives > 0)
+                    {
+                        m_numLives -=1;
+
+                        if(m_lives.size() > 0)
+                            m_lives.pop_back();
+
+                        std::cout<<"Number of lives: "<<m_numLives<<std::endl;
+                    }
+                    else
+                    {
+                        std::cout<<"Number of lives: "<<m_numLives<<std::endl;
+                        m_levelstate = levelstate::lost;
+                        return;
+                    }
+                }
+                break;
+
+                case sf::Keyboard::F://super secret win button...
+                {
+                    m_levelstate = levelstate::won;
+                    return;
+                }
+                break;
+
+                case sf::Keyboard::L://super secret lose button...
+                {
+                    m_levelstate = levelstate::lost;
                     return;
                 }
                 break;
@@ -210,6 +540,13 @@ void nasic::level::show(sf::RenderWindow& window)
                 }
                 break;
 
+                case sf::Keyboard::P:
+                {
+                    pauseSwitch *= -1;//toggle the pause overlay
+                    m_pauseSnd.play();
+                }
+                break;
+
                 case sf::Keyboard::Space:
                 {
                     if(ammoClock.getElapsedTime().asSeconds() > .01f)
@@ -225,7 +562,7 @@ void nasic::level::show(sf::RenderWindow& window)
                 }
             }
 
-            if(e.type == sf::Event::KeyReleased)
+            if(e.type == sf::Event::KeyReleased && (introFrames.asSeconds() > 10.f && bossIntroFrames.asSeconds() > 10.f))
             {
                 switch(e.key.code)
                 {
@@ -265,95 +602,1021 @@ void nasic::level::show(sf::RenderWindow& window)
             }
         }
 
-        if(shooting && m_playerAmmo.size() < 2 && ammoClock.getElapsedTime().asSeconds() < .01f)
+        if(shooting && m_playerAmmo.size() < 2 && ammoClock.getElapsedTime().asSeconds() < .01f && pauseSwitch != 1)
         {
-            nasic::ammo m_ammo(nasic::ammo::ammoType::warrior, sf::Vector2f(hero.getPosition().x, hero.getPosition().y), scale);
-            m_playerAmmo.push_back(m_ammo);
-            std::cout<<m_playerAmmo.size()<<std::endl;
-            shot.play();
+            m_ammoPtr = new nasic::ammo(nasic::ammo::ammoType::warrior, sf::Vector2f(hero.getPosition().x + hero.getAABB().x/2.f, hero.getPosition().y), m_scaleY);
+            m_playerAmmo.push_back(*m_ammoPtr);
+            //std::cout<<m_playerAmmo.size()<<std::endl;
+            m_shot.play();
         }
 
-        //handle game ticks and return a fixed dt
-        //for updates
+        //////////////////////////////////////////
+        //handle game ticks and return
+        //a fixed dt for updates
+        //thanks to the SFML book for
+        //providing this code
+        //////////////////////////////////////////
+
         timeSinceLastUpdate += tickClock.restart();
         while (timeSinceLastUpdate > TimePerFrame)
         {
-            timeSinceLastUpdate -= TimePerFrame;
+            srand(time(NULL));//seed a random number every frame
+
             stars.update(window,TimePerFrame);
 
             updateEnemies(window, TimePerFrame);
             m_expAnim.update(TimePerFrame);
 
-            //movement for enemies
-            std::list<nasic::enemy>::iterator enemIt;
-            for(enemIt = m_enemies.begin(); enemIt != m_enemies.end(); ++enemIt)
+            if(introFrames.asSeconds() < 10.f)
+                timeClock = sf::Time::Zero;//reset the timer until the wave stars...
+
+            if(pauseSwitch)
             {
-                if((*enemIt).getPosition().x <= (*enemIt).getAABB().x)
+                //updates and time for pause message
+                if(messageFrames.asSeconds() > 2.f)
                 {
-                    dir = 0;
+                    messageFrames = sf::Time::Zero;
+                    colorSwitch *= -1;
                 }
 
-                if((*enemIt).getPosition().x >= m_winsizeX - (*enemIt).getAABB().x)
+                else
+                    messageFrames += TimePerFrame;
+
+                float r = interpolate::sineEaseIn(messageFrames.asSeconds(),0.f,255.f,2.f);
+                float g = interpolate::sineEaseIn(messageFrames.asSeconds(),0.f,255.f,2.f);
+                float b = interpolate::sineEaseIn(messageFrames.asSeconds(),0.f,255.f,2.f);
+
+                if(colorSwitch == -1 && r < 255)
                 {
-                    dir = 1;
+                    m_pauseOverlay.setColor(sf::Color(255,(unsigned int)g,(unsigned int)b,255));
+                    pauseBg.setFillColor(sf::Color(0,(unsigned int)g,255-(unsigned int)b,200));
+                    m_killer.updateEyeColor((unsigned int)r,255-(unsigned int)g);
                 }
 
-                switch(dir)
+                if(colorSwitch == 1 && r < 255)
                 {
-                case 0://move enemies right
-                {
-                    (*enemIt).move(scale*(TimePerFrame.asSeconds()*75), 0.f);
-                }
-                break;
-
-                case 1://move enemies left
-                {
-                    (*enemIt).move(scale*(-TimePerFrame.asSeconds()*75), 0.f);
-                }
-                break;
-
-                default:
-                    break;
+                    m_pauseOverlay.setColor(sf::Color(255,255-(unsigned int)g,255-(unsigned int)b,255));
+                    pauseBg.setFillColor(sf::Color(0,255-(unsigned int)g,(unsigned int)b,200));
+                    m_killer.updateEyeColor(255-(unsigned int)r,(unsigned int)g);
                 }
             }
 
-            updateProjectiles(TimePerFrame);
-            checkEnemyCollisions(window);
-            hero.update(window, TimePerFrame);
+            if(introFrames.asSeconds() > 10.f)
+            {
+                if(m_enemyMoveFrames.asSeconds() >= 5.f)
+                {
+                    m_enemyMoveFrames = sf::Time::Zero;
+                    m_dir *= -1;//switch directions...
+                    //std::cout<<"direction: "<<m_dir<<std::endl;
+                }
 
-            if(moveleft && hero.getPosition().x >= 0.f + hero.getAABB().x)
-                hero.move(sf::Vector2f(-(float)hero.getVel()*scale, 0.f),TimePerFrame);
+                else
+                {
+                    if(pauseSwitch != 1)//if the game is not paused...
+                        m_enemyMoveFrames += TimePerFrame;
+                }
 
-            if(moveright && hero.getPosition().x <= m_winsizeX - hero.getAABB().x)
-                hero.move(sf::Vector2f((float)hero.getVel()*scale, 0.f),TimePerFrame);
 
-            if(moveup && hero.getPosition().y >= m_winsizeY/2.f + hero.getAABB().y)
-                hero.move(sf::Vector2f(0.f, -(float)hero.getVel()*scale),TimePerFrame);
+                //movement for enemies
+                std::list<nasic::enemy>::iterator enemIt;
+                for(enemIt = m_enemies.begin(); enemIt != m_enemies.end(); ++enemIt)
+                {
+                    //must multiply by the direction int to keep the
+                    //enemies oscillating back and forth
+                    if(m_enemyMoveFrames.asSeconds() < 5.f && pauseSwitch != 1)
+                        (*enemIt).move(m_dir*((5*m_scale)*(interpolate::backEaseOut(m_enemyMoveFrames.asSeconds(), 0.f, 1.f, 5.f))), m_scale*m_enemyMoveFrames.asSeconds()*(float)m_dir/12.f);
+                }
 
-            if(movedown && hero.getPosition().y <= m_winsizeY - hero.getAABB().y)
-                hero.move(sf::Vector2f(0.f, (float)hero.getVel()*scale),TimePerFrame);
+                if(pauseSwitch != 1)//if the game is not paused...
+                    updateProjectiles(TimePerFrame);
+
+                hero.update(window, TimePerFrame);
+
+                if(moveleft && hero.getPosition().x >= 0.f - hero.getAABB().x/2.f && pauseSwitch != 1)
+                    hero.move(sf::Vector2f(-hero.getVel()*m_scale, 0.f),TimePerFrame);
+
+                if(moveright && hero.getPosition().x <= m_winsizeX - hero.getAABB().x*2.f && pauseSwitch != 1)
+                    hero.move(sf::Vector2f(hero.getVel()*m_scale, 0.f),TimePerFrame);
+
+                if(moveup && hero.getPosition().y >= m_winsizeY/1.5f - hero.getAABB().y/2.f && pauseSwitch != 1)
+                    hero.move(sf::Vector2f(0.f, -hero.getVel()*m_scale),TimePerFrame);
+
+                if(movedown && hero.getPosition().y <= m_winsizeY*.85f - hero.getAABB().y && pauseSwitch != 1)
+                    hero.move(sf::Vector2f(0.f, hero.getVel()*m_scale),TimePerFrame);
+            }
+
+            if(m_wave < 4)
+                showIntro(window, introFrames);
+
+            if(introFrames.asSeconds() < 2.f)
+                m_introMessage.setScale(fabs(interpolate::elasticEaseOut(introFrames.asSeconds(),0.f,m_scale*1.45f,2.f)),fabs(interpolate::elasticEaseOut(introFrames.asSeconds(),0.f,m_scale*1.45f,2.f)));
+
+            if(bonusFrames.asSeconds() < 3.f)
+            {
+                m_timeBonusMessage.move(-4.f*m_scale*interpolate::cubicEaseOut(bonusFrames.asSeconds(),0.f,1.f,3.f),0.f);
+                m_survivalBonusMessage.move(-4.f*m_scale*interpolate::cubicEaseOut(bonusFrames.asSeconds(),0.f,1.f,3.f),0.f);
+                m_accuracyBonusMessage.move(-4.f*m_scale*interpolate::cubicEaseOut(bonusFrames.asSeconds(),0.f,1.f,3.f),0.f);
+                showBonus(window);
+            }
+            else
+            {
+                m_timeBonusMessage.setPosition(window.getSize().x*.9f, window.getSize().y/4.f);
+                m_survivalBonusMessage.setPosition(window.getSize().x*.9f, window.getSize().y/6.f);
+                m_accuracyBonusMessage.setPosition(window.getSize().x*.9f, window.getSize().y/12.f);
+            }
+
+            timeSinceLastUpdate -= TimePerFrame;
+            introFrames += TimePerFrame;
+            bossIntroFrames += TimePerFrame;
+            bonusFrames += TimePerFrame;
+            enemyFireFrames += TimePerFrame;
+            bossCannonFrames += TimePerFrame;
+            bossMissileFrames += TimePerFrame;
+            bossGunFrames += TimePerFrame;
+            missileAmmoFrames += TimePerFrame;
+
+            if(pauseSwitch != 1)
+                timeClock += TimePerFrame;
+
+            if(m_wave < 4 && enemyInitStatus() && introFrames.asSeconds() > 10.f)
+            {
+                if(m_enemies.size() > 0)
+                {
+                    //load up the enemy ammo vector every second
+                    if(enemyFireFrames.asSeconds() > 1.f && m_enemyAmmo.size() < 1 && pauseSwitch != 1)
+                    {
+                        int pickRandEnemy = rand()% m_enemies.size();
+                        std::list<nasic::enemy>::iterator randEnemyIt = m_enemies.begin();
+
+                        //advance the list iterator to a random enemy
+                        //in the list every second
+                        std::advance(randEnemyIt, pickRandEnemy);
+
+                        switch(randEnemyIt->getType())
+                        {
+                        case 0:
+                        {
+                            m_ammoPtr = new nasic::ammo(nasic::ammo::ammoType::agravu, sf::Vector2f(randEnemyIt->getPosition().x + randEnemyIt->getAABB().x/2.f, randEnemyIt->getPosition().y + randEnemyIt->getAABB().y/2.f), m_scaleY);
+                            m_enemyAmmo.push_back(*m_ammoPtr);
+                        }
+                        break;
+                        case 1:
+                        {
+                            m_ammoPtr = new nasic::ammo(nasic::ammo::ammoType::delsiriak, sf::Vector2f(randEnemyIt->getPosition().x + randEnemyIt->getAABB().x/2.f, randEnemyIt->getPosition().y + randEnemyIt->getAABB().y/2.f), m_scaleY);
+                            m_enemyAmmo.push_back(*m_ammoPtr);
+                        }
+                        break;
+                        case 2:
+                        {
+                            m_ammoPtr = new nasic::ammo(nasic::ammo::ammoType::gluorn, sf::Vector2f(randEnemyIt->getPosition().x + randEnemyIt->getAABB().x/2.f, randEnemyIt->getPosition().y + randEnemyIt->getAABB().y/2.f), m_scaleY);
+                            m_enemyAmmo.push_back(*m_ammoPtr);
+                        }
+                        break;
+                        case 3:
+                        {
+                            m_ammoPtr = new nasic::ammo(nasic::ammo::ammoType::rhiians, sf::Vector2f(randEnemyIt->getPosition().x + randEnemyIt->getAABB().x/2.f, randEnemyIt->getPosition().y + randEnemyIt->getAABB().y/2.f), m_scaleY);
+                            m_enemyAmmo.push_back(*m_ammoPtr);
+                        }
+                        break;
+                        default:
+                            break;
+                        }
+                        enemyFireFrames = sf::Time::Zero;
+                    }
+
+                    std::list<nasic::ammo>::iterator screenAmmoIt;//check to see if enemy bullet left the screen...
+                    for(screenAmmoIt = m_enemyAmmo.begin(); screenAmmoIt != m_enemyAmmo.end(); ++screenAmmoIt)
+                    {
+                        if(screenAmmoIt->getPosition().y > window.getSize().y)
+                        {
+                            screenAmmoIt = m_enemyAmmo.erase(screenAmmoIt);//delete missed shots...
+                        }
+                    }
+
+                    std::list<nasic::ammo>::iterator ammoIt;//check for collisions with the player ship...
+                    for(ammoIt = m_enemyAmmo.begin(); ammoIt != m_enemyAmmo.end(); ++ammoIt)
+                    {
+                        if(ammoIt->getPosition().y >= hero.getPosition().y
+                                && ammoIt->getPosition().y <= hero.getPosition().y + m_scale*hero.getAABB().y
+                                && ammoIt->getPosition().x >= hero.getPosition().x
+                                && ammoIt->getPosition().x <= hero.getPosition().x + m_scale*hero.getAABB().x)
+                        {
+                            //set the explosion position to the enemy location
+                            m_explosionSpr.setPosition(ammoIt->getPosition().x, ammoIt->getPosition().y);
+                            m_expAnim.playAnimation("explode");
+
+                            //set the explosion sound buffer and play it
+                            m_explosion.setBuffer(m_explodBuff);
+                            m_explosion.play();
+
+                            life.setFillColor(sf::Color(255,255,0,200));
+
+                            switch(ammoIt->getType())
+                            {
+                            case nasic::ammo::ammoType::agravu:
+                            {
+                                if(hero.getHealth() <= 0 && m_numLives > 0)
+                                {
+                                    hero.heal(maxHealth);
+                                    m_numLives -=1;
+                                    if(m_lives.size() > 0)
+                                        m_lives.pop_back();
+                                }
+                                else if(hero.getHealth() <=0 && m_numLives == 0) //player is a complete loser...
+                                {
+                                    m_levelstate = levelstate::lost;
+                                    return;
+                                }
+                                else
+                                    hero.damage(10);
+                            }
+                            break;
+
+                            case nasic::ammo::ammoType::delsiriak:
+                            {
+                                if(hero.getHealth() <= 0 && m_numLives > 0)
+                                {
+                                    hero.heal(maxHealth);
+                                    m_numLives -=1;
+                                    if(m_lives.size() > 0)
+                                        m_lives.pop_back();
+                                }
+                                else if(hero.getHealth() <=0 && m_numLives == 0)//player is a complete loser...
+                                {
+                                    m_levelstate = levelstate::lost;
+                                    return;
+                                }
+                                else
+                                    hero.damage(10);
+                            }
+                            break;
+
+                            case nasic::ammo::ammoType::gluorn:
+                            {
+                                if(hero.getHealth() <= 0 && m_numLives > 0)
+                                {
+                                    hero.heal(maxHealth);
+                                    m_numLives -=1;
+                                    if(m_lives.size() > 0)
+                                        m_lives.pop_back();
+                                }
+                                else if(hero.getHealth() <=0 && m_numLives == 0) //player is a complete loser...
+                                {
+                                    m_levelstate = levelstate::lost;
+                                    return;
+                                }
+                                else
+                                    hero.damage(20);
+                            }
+                            break;
+
+                            case nasic::ammo::ammoType::rhiians:
+                            {
+                                if(hero.getHealth() <= 0 && m_numLives > 0)
+                                {
+                                    hero.heal(maxHealth);
+                                    m_numLives -=1;
+                                    if(m_lives.size() > 0)
+                                        m_lives.pop_back();
+                                }
+                                else if(hero.getHealth() <=0 && m_numLives == 0) //player is a complete loser...
+                                {
+                                    m_levelstate = levelstate::lost;
+                                    return;
+                                }
+                                else
+                                    hero.damage(20);
+                            }
+                            break;
+
+                            default:
+                                break;
+                            }
+
+                            ammoIt = m_enemyAmmo.erase(ammoIt);
+                        }
+
+                        else
+                        {
+                            life.setFillColor(sf::Color(0,255,0,200));
+                        }
+                    }
+                }
+
+                else
+                {
+                    //do the time bonus calculation
+                    if(timeClock.asSeconds() < 30.f)
+                        m_timeBonusFactor = 3;
+
+                    else if(timeClock.asSeconds() < 60.f)
+                        m_timeBonusFactor = 2;
+
+                    else
+                        m_timeBonusFactor = 1;
+
+                    m_score = m_score*m_timeBonusFactor;//multiply score by bonus factor
+
+                    //do the survival bonus calculation
+                    if(m_numLives == initialLives)
+                        m_survivalBonus = 10000*m_wave;//multiply by wave so it scales with difficulty to achieve the bonus
+
+                    else if(m_numLives == initialLives - 1)
+                        m_survivalBonus = 1000*m_wave;
+
+                    else
+                        m_survivalBonus = 0;
+
+                    m_score = m_score+m_survivalBonus;
+
+                    //do the accuracy bonus calculation
+                    float tempRate = (float)m_hits/(m_hits+m_misses);
+                    accuracyRatio = (int)100*(tempRate);
+
+                    if(accuracyRatio > 90)
+                        m_accuracyBonus = 10000;
+                    else if(accuracyRatio > 75)
+                        m_accuracyBonus = 5000;
+                    else if(accuracyRatio > 50)
+                        m_accuracyBonus = 1000;
+                    else if(accuracyRatio < 50)
+                        m_accuracyBonus = 0;
+
+                    m_score = m_score+m_accuracyBonus;
+
+                    bonusFrames = sf::Time::Zero;
+
+                    std::cout<<"Time: "<<timeClock.asSeconds()<<"\nInitial lives: "<<initialLives<<"\nNew lives: "<<m_numLives<<"\nHits: "<<m_hits<<"\nMisses: "<<m_misses<<"\nHit ratio: "<<accuracyRatio<<std::endl;
+                    std::cout<<"Time bonus: "<<m_timeBonusFactor<<"\nSurvival bonus: "<<m_survivalBonus<<"\nAccuracy bonus: "<<m_accuracyBonus<<std::endl;
+
+                    ++m_wave;
+                    timeClock = sf::Time::Zero;//reset the timer for bonuses
+                    introFrames = sf::Time::Zero;
+                    setEnemyInitStatus(false);
+                    purgeEnemies();
+                    m_dir = 1;
+                    initEnemies(window, 4, 10, m_scale);
+                }
+            }
+
+            else if(m_wave == 4)
+            {
+                doBossFight = true;
+                //a little housekeeping to reset boss intro frames
+                ++tempcounter;
+                if(tempcounter == 1)
+                {
+                    setEnemyInitStatus(false);
+                    purgeEnemies();
+                    bossIntroFrames = sf::Time::Zero;
+                    killerDrone.play();
+                }
+            }
+
+            if(doBossFight)
+            {
+                //show the boss intro messages
+                showBossIntro(window,bossIntroFrames);
+
+                m_explosionSpr.setTexture(blood);
+
+                if(bossIntroFrames.asSeconds() > 10.f)
+                {
+                    ///////////////////////////////////
+                    //perform boss motion updates
+                    ///////////////////////////////////
+
+                    if(bossMandibleFrames.asSeconds() > 1.f)
+                    {
+                        bossMandibleFrames = sf::Time::Zero;
+                        mandibleRotationDirection *= -1;
+                    }
+
+                    else
+                    {
+                        bossMandibleFrames += TimePerFrame;
+                    }
+
+                    m_killer.animateMandibles(mandibleRotationDirection*interpolate::expoEaseIn(bossMandibleFrames.asSeconds(), 0.f, 1.f, 1.f));
+
+                    if(bossMotionFrames.asSeconds() >= 5.f && pauseSwitch != 1)
+                    {
+                        bossMotionFrames = sf::Time::Zero;
+                        killerDirection *= -1;//switch directions...
+                    }
+
+                    else
+                    {
+                        bossMotionFrames += TimePerFrame;
+                    }
+
+                    m_killer.move(killerDirection*(m_scale*10.f)*(interpolate::backEaseOut(bossMotionFrames.asSeconds(), 0.f, 1.f, 5.f)), m_scale*bossMotionFrames.asSeconds()*(float)killerDirection/12.f);
+
+                    ///////////////////////////////
+                    //perform boss ammo updates
+                    ///////////////////////////////
+
+                    if(bossBurstFrames.asSeconds() > .5f)
+                        bossBurstFrames = sf::Time::Zero;
+
+                    else
+                        bossBurstFrames += TimePerFrame;
+
+                    if(missileBurstFrames.asSeconds() > 3.f)
+                        missileBurstFrames = sf::Time::Zero;
+                    else
+                        missileBurstFrames += TimePerFrame;
+
+                    //instantiate as many particles as the frame rate will allow
+                    m_particle.setPosition(m_killer.getPosition().x + m_killer.getAABB().x/4.f + thorDistr(), m_killer.getPosition().y + m_killer.getAABB().y * 1.5f);
+                    particles.push_back(m_particle);
+
+                    //update particles
+                    for(particleIt = particles.begin(); particleIt != particles.end(); ++particleIt)
+                    {
+                        if(!particleIt->isAlive())
+                            particleIt = particles.erase(particleIt);
+                        else
+                        {
+                            particleIt->move(0.f, m_scale*2.f);
+                            particleIt->decAlpha(TimePerFrame);
+                        }
+                    }
+
+                    //load up the enemy ammo vector every second
+                    if(bossGunFrames.asSeconds() > .1f && bossBurstFrames.asSeconds() > 0.25f && pauseSwitch != 1)
+                    {
+                        m_ammoPtr = new nasic::ammo(nasic::ammo::ammoType::delsiriak, m_killer.leftGunPosition(), m_scaleY);
+                        m_enemyAmmo.push_back(*m_ammoPtr);
+
+                        m_ammoPtr = new nasic::ammo(nasic::ammo::ammoType::delsiriak, m_killer.rightGunPosition(), m_scaleY);
+                        m_enemyAmmo.push_back(*m_ammoPtr);
+
+                        bossGunFrames = sf::Time::Zero;
+                    }
+
+                    if(bossMissileFrames.asSeconds() > .1f && missileBurstFrames.asSeconds() > 3.f && pauseSwitch != 1)
+                    {
+                        m_ammoPtr = new nasic::ammo(nasic::ammo::ammoType::missile, m_killer.leftEyeLaserPosition(), m_scaleY);
+                        m_missileAmmo.push_back(*m_ammoPtr);
+
+                        m_ammoPtr = new nasic::ammo(nasic::ammo::ammoType::missile, m_killer.rightEyeLaserPosition(), m_scaleY);
+                        m_missileAmmo.push_back(*m_ammoPtr);
+
+                        bossMissileFrames = sf::Time::Zero;
+                    }
+
+                    if(bossCannonFrames.asSeconds() > .1f && bossBurstFrames.asSeconds() > 0.5f && pauseSwitch != 1)
+                    {
+                        m_ammoPtr = new nasic::ammo(nasic::ammo::ammoType::rhiians, m_killer.leftCannonPosition(), m_scaleY);
+                        m_enemyAmmo.push_back(*m_ammoPtr);
+
+                        m_ammoPtr = new nasic::ammo(nasic::ammo::ammoType::rhiians, m_killer.rightCannonPosition(), m_scaleY);
+                        m_enemyAmmo.push_back(*m_ammoPtr);
+
+                        bossCannonFrames = sf::Time::Zero;
+                    }
+
+                    std::list<nasic::ammo>::iterator screenAmmoIt;//check to see if enemy bullet left the screen...
+                    for(screenAmmoIt = m_enemyAmmo.begin(); screenAmmoIt != m_enemyAmmo.end(); ++screenAmmoIt)
+                    {
+                        if(screenAmmoIt->getPosition().y > window.getSize().y)
+                        {
+                            screenAmmoIt = m_enemyAmmo.erase(screenAmmoIt);//delete missed shots...
+                        }
+                    }
+
+                    std::list<nasic::ammo>::iterator ammoIt;//check for collisions with the player ship...
+                    for(ammoIt = m_enemyAmmo.begin(); ammoIt != m_enemyAmmo.end(); ++ammoIt)
+                    {
+                        if(ammoIt->getPosition().y >= hero.getPosition().y
+                                && ammoIt->getPosition().y <= hero.getPosition().y + m_scale*hero.getAABB().y
+                                && ammoIt->getPosition().x >= hero.getPosition().x
+                                && ammoIt->getPosition().x <= hero.getPosition().x + m_scale*hero.getAABB().x)
+                        {
+                            //set the explosion position to the enemy location
+                            m_explosionSpr.setPosition(ammoIt->getPosition().x, ammoIt->getPosition().y);
+                            m_expAnim.playAnimation("explode");
+
+                            //set the explosion sound buffer and play it
+                            m_explosion.setBuffer(m_explodBuff);
+                            m_explosion.play();
+
+                            life.setFillColor(sf::Color(255,255,0,200));
+
+                            switch(ammoIt->getType())
+                            {
+                            case nasic::ammo::ammoType::agravu:
+                            {
+                                if(hero.getHealth() <= 0 && m_numLives > 0)
+                                {
+                                    hero.heal(maxHealth);
+                                    m_numLives -=1;
+                                    if(m_lives.size() > 0)
+                                        m_lives.pop_back();
+                                }
+                                else if(hero.getHealth() <=0 && m_numLives == 0) //player is a complete loser...
+                                {
+                                    m_levelstate = levelstate::lost;
+                                    return;
+                                }
+                                else
+                                    hero.damage(10);
+                            }
+                            break;
+
+                            case nasic::ammo::ammoType::delsiriak:
+                            {
+                                if(hero.getHealth() <= 0 && m_numLives > 0)
+                                {
+                                    hero.heal(maxHealth);
+                                    m_numLives -=1;
+                                    if(m_lives.size() > 0)
+                                        m_lives.pop_back();
+                                }
+                                else if(hero.getHealth() <=0 && m_numLives == 0)//player is a complete loser...
+                                {
+                                    m_levelstate = levelstate::lost;
+                                    return;
+                                }
+                                else
+                                    hero.damage(10);
+                            }
+                            break;
+
+                            case nasic::ammo::ammoType::gluorn:
+                            {
+                                if(hero.getHealth() <= 0 && m_numLives > 0)
+                                {
+                                    hero.heal(maxHealth);
+                                    m_numLives -=1;
+                                    if(m_lives.size() > 0)
+                                        m_lives.pop_back();
+                                }
+                                else if(hero.getHealth() <=0 && m_numLives == 0) //player is a complete loser...
+                                {
+                                    m_levelstate = levelstate::lost;
+                                    return;
+                                }
+                                else
+                                    hero.damage(20);
+                            }
+                            break;
+
+                            case nasic::ammo::ammoType::rhiians:
+                            {
+                                if(hero.getHealth() <= 0 && m_numLives > 0)
+                                {
+                                    hero.heal(maxHealth);
+                                    m_numLives -=1;
+                                    if(m_lives.size() > 0)
+                                        m_lives.pop_back();
+                                }
+                                else if(hero.getHealth() <=0 && m_numLives == 0) //player is a complete loser...
+                                {
+                                    m_levelstate = levelstate::lost;
+                                    return;
+                                }
+                                else
+                                    hero.damage(20);
+                            }
+                            break;
+
+                            default:
+                                break;
+                            }
+
+                            ammoIt = m_enemyAmmo.erase(ammoIt);
+                        }
+
+                        else
+                        {
+                            life.setFillColor(sf::Color(0,255,0,200));
+                        }
+                    }
+
+                    ////////////////////////////////
+                    //handle missile collisions
+                    ////////////////////////////////
+                    std::list<nasic::ammo>::iterator missileIt;//check for collisions with the player ship...
+                    for(missileIt = m_missileAmmo.begin(); missileIt != m_missileAmmo.end(); ++missileIt)
+                    {
+                        if(missileIt->getPosition().y >= hero.getPosition().y
+                                && missileIt->getPosition().y <= hero.getPosition().y + m_scale*hero.getAABB().y
+                                && missileIt->getPosition().x >= hero.getPosition().x
+                                && missileIt->getPosition().x <= hero.getPosition().x + m_scale*hero.getAABB().x)
+                        {
+                            //set the explosion position to the enemy location
+                            m_explosionSpr.setPosition(missileIt->getPosition().x, missileIt->getPosition().y);
+                            m_expAnim.playAnimation("explode");
+
+                            //set the explosion sound buffer and play it
+                            m_explosion.setBuffer(m_explodBuff);
+                            m_explosion.play();
+
+                            life.setFillColor(sf::Color(255,255,0,200));
+
+                            if(hero.getHealth() <= 0 && m_numLives > 0)
+                                {
+                                    hero.heal(maxHealth);
+                                    m_numLives -=1;
+                                    if(m_lives.size() > 0)
+                                        m_lives.pop_back();
+                                }
+                                else if(hero.getHealth() <=0 && m_numLives == 0) //player is a complete loser...
+                                {
+                                    m_levelstate = levelstate::lost;
+                                    return;
+                                }
+                                else
+                                    hero.damage(30);
+
+                            missileIt = m_missileAmmo.erase(missileIt);
+                        }
+
+                        else
+                        {
+                            life.setFillColor(sf::Color(0,255,0,200));
+                        }
+                    }
+
+                    //missiles are a special case as ammo, therefore,
+                    //the firing of missiles will be done specially...;)
+                    if(missileAmmoFrames.asSeconds() > 3.f)
+                        missileAmmoFrames = sf::Time::Zero;
+
+                    for(m_missileIt = m_missileAmmo.begin(); m_missileIt != m_missileAmmo.end(); ++m_missileIt)
+                    {
+                        m_missileIt->fire(missileAmmoFrames);
+                    }
+
+                    //check for collisions against the boss
+                    std::list<nasic::ammo>::iterator playerAmmoIt;
+                    for(playerAmmoIt = m_playerAmmo.begin(); playerAmmoIt != m_playerAmmo.end(); ++playerAmmoIt)
+                    {
+                        if(playerAmmoIt->getPosition().y < m_killer.getTargetPosition().y + m_killer.getTargetAABB().y
+                                && playerAmmoIt->getPosition().y > m_killer.getTargetPosition().y
+                                && playerAmmoIt->getPosition().x < m_killer.getTargetPosition().x + m_killer.getTargetAABB().x
+                                && playerAmmoIt->getPosition().x > m_killer.getTargetPosition().x)
+                        {
+                            m_killer.damage(10);
+                            m_score += 100;
+
+                            bossHealth.setFillColor(sf::Color(255,155,0,200));
+
+                            //set the explosion position to the enemy location
+                            m_explosionSpr.setPosition(playerAmmoIt->getPosition().x, playerAmmoIt->getPosition().y);
+                            m_expAnim.playAnimation("explode");
+
+                            //set the explosion sound buffer and play it
+                            m_explosion.setBuffer(m_explodBuff);
+                            m_explosion.play();
+
+                            //update the hit count
+                            m_hits++;
+
+                            playerAmmoIt = m_playerAmmo.erase(playerAmmoIt);
+
+                            if(m_killer.getHealth() <= 0 && hero.getHealth() > 0)
+                                m_wave = 5;
+                        }
+
+                        else if(playerAmmoIt->getPosition().y < 0.f)
+                        {
+                            playerAmmoIt = m_playerAmmo.erase(playerAmmoIt);
+
+                            //update the miss count
+                            m_misses++;
+                        }
+                        else
+                        {
+                            bossHealth.setFillColor(sf::Color(200,0,0,200));
+                        }
+                    }
+                }
+            }
+
+            if(bossIntroFrames.asSeconds() < 2.f)
+                m_bossMessage.setScale(fabs(interpolate::elasticEaseOut(bossIntroFrames.asSeconds(),0.f,m_scale*1.45f,2.f)),fabs(interpolate::elasticEaseOut(bossIntroFrames.asSeconds(),0.f,m_scale*1.45f,2.f)));
+
+            m_introMessage.update(e,window);
+            m_bossMessage.update(e,window);
+
+            if(m_wave == 5)//check to see if player is full of win or a complete loser....
+            {
+                m_levelstate = levelstate::won;
+                return;
+            }
         }
+
+        //check pause status for music
+        if(pauseSwitch == 1)
+        {
+            m_music.pause();
+            pauseCounter = 0;
+        }
+
+        else
+        {
+            pauseCounter++;
+            if(pauseCounter == 1)
+                m_music.play();
+        }
+
+        //check for collisions
+        if(m_enemies.size() > 0)
+            checkEnemyCollisions(window);
 
         m_expAnim.animate(m_explosionSpr);
 
         window.clear();
+
         window.draw(stars);
-        renderEnemies(window);
+
+        if(m_wave < 4)
+            renderEnemies(window);
+
         renderProjectiles(window);
         window.draw(hero);
+
         if(m_expAnim.isPlayingAnimation())
             window.draw(m_explosionSpr);
+
+        window.draw(bottomBG);
+        window.draw(bottomLine);
+
         window.draw(score);
+
+        m_scoreLabel.setString(toString(m_score));
+        window.draw(m_scoreLabel);
+
         window.draw(lives);
+        for(m_livesItr = m_lives.begin(); m_livesItr != m_lives.end(); ++m_livesItr)
+        {
+            window.draw(*m_livesItr);
+        }
+
+        m_timeLabel.setString("Time: " + toString((int)timeClock.asSeconds()));
+        window.draw(m_timeLabel);
+
+        if(m_wave == 4)
+        {
+            window.draw(bossHealthLabel);
+            bossHealth.setSize(sf::Vector2f(m_scale*m_killer.getHealth(),m_scale*5.f));
+            window.draw(bossHealth);
+
+            //draw particles
+            std::list<nasic::particle>::iterator partIt;
+            if(particles.size() > 0)
+            {
+                for(partIt = particles.begin(); partIt != particles.end(); ++partIt)
+                {
+                    window.draw(*partIt);
+                }
+            }
+
+            window.draw(m_killer);
+
+            //draw the missiles if the boss fight is happening
+            for(m_missileIt = m_missileAmmo.begin(); m_missileIt != m_missileAmmo.end(); ++m_missileIt)
+            {
+                window.draw(*m_missileIt);
+            }
+        }
+
+        window.draw(lifeLabel);
+
+        life.setSize(sf::Vector2f(m_scale*hero.getHealth(),m_scale*5.f));
+        window.draw(life);
+
+        //draw the intro message conditionally on the intro time and wave
+        if(introFrames.asSeconds() < 10.f && m_wave < 4)
+            window.draw(m_introMessage);
+
+        //draw the boss message conditionally on the boss intro time and wave
+        if(bossIntroFrames.asSeconds() < 10.f && m_wave == 4)
+            window.draw(m_bossMessage);
+
+        //draw the bonus messages
+        if(m_wave > 1 && m_timeBonusFactor > 1 && bonusFrames.asSeconds() < 3.f)
+        {
+            window.draw(m_timeBonusMessage);
+        }
+        if(m_wave > 1 && m_survivalBonus > 1 && bonusFrames.asSeconds() < 3.f)
+        {
+            window.draw(m_survivalBonusMessage);
+        }
+
+        if(m_wave > 1 && m_accuracyBonus > 1 && bonusFrames.asSeconds() < 3.f)
+        {
+            window.draw(m_accuracyBonusMessage);
+        }
+
+        //draw pause overlay if game is paused
+        if(pauseSwitch == 1)
+        {
+            window.draw(pauseBg);
+            window.draw(m_pauseOverlay);
+            window.draw(rightCorner);
+            window.draw(leftCorner);
+        }
+
         window.display();
     }
-
     return;
+}
+
+void nasic::level::showIntro(sf::RenderWindow& window, sf::Time dt)
+{
+    if(m_wave == 1)
+    {
+        m_introMessage = gui::button("Time to destroy \nsome alien ships!", m_myfont, sf::Vector2f(window.getSize().x/2.f, window.getSize().y/2.f), gui::style::clean);
+
+        if(dt.asSeconds() < 2.f)
+        {
+            m_introMessage.setSize(32);
+            m_introMessage.setLabelOffset(sf::Vector2f(0.f,m_scale*4.f));
+        }
+
+        if(dt.asSeconds() > 2.f && dt.asSeconds() < 4.f)
+        {
+            m_introMessage.setSize(32);
+            m_introMessage.setLabelOffset(sf::Vector2f(0.f,m_scale*4.f));
+            m_introMessage.setScale(m_scale, m_scale);
+            m_introMessage.setText("Press the arrow \nkeys to move...");
+        }
+
+        else if(dt.asSeconds() > 4.f && dt.asSeconds() < 6.f)
+        {
+            m_introMessage.setSize(32);
+            m_introMessage.setLabelOffset(sf::Vector2f(0.f,m_scale*4.f));
+            m_introMessage.setScale(m_scale, m_scale);
+            m_introMessage.setText("Press the space \nbar to fire...");
+        }
+
+        else if(dt.asSeconds() > 6.f && dt.asSeconds() < 8.f)
+        {
+            m_introMessage.setSize(64);
+            m_introMessage.setLabelOffset(sf::Vector2f(0.f,-m_scale*8.f));
+            m_introMessage.setScale(m_scale, m_scale);
+            m_introMessage.setText("Ready...");
+        }
+
+        else if(dt.asSeconds() > 8.f && dt.asSeconds() < 10.f)
+        {
+            m_introMessage.setSize(64);
+            m_introMessage.setLabelOffset(sf::Vector2f(0.f,-m_scale*4.f));
+            m_introMessage.setScale(m_scale, m_scale);
+            m_introMessage.setText("Go!!!");
+        }
+    }
+
+    if(m_wave == 2)
+    {
+        m_introMessage = gui::button("In N.A.S.I.C.,\nenemies come in waves.", m_myfont, sf::Vector2f(window.getSize().x/2.f, window.getSize().y/2.f), gui::style::clean);
+
+        if(dt.asSeconds() < 2.f)
+        {
+            m_introMessage.setSize(32);
+            m_introMessage.setLabelOffset(sf::Vector2f(0.f,m_scale*4.f));
+        }
+
+        if(dt.asSeconds() > 2.f && dt.asSeconds() < 4.f)
+        {
+            m_introMessage.setSize(32);
+            m_introMessage.setLabelOffset(sf::Vector2f(0.f,m_scale*4.f));
+            m_introMessage.setScale(m_scale, m_scale);
+            m_introMessage.setText("Destroy enemy ships\nas quickly and\naccurately as possible.");
+        }
+
+        else if(dt.asSeconds() > 4.f && dt.asSeconds() < 6.f)
+        {
+            m_introMessage.setSize(32);
+            m_introMessage.setLabelOffset(sf::Vector2f(0.f,m_scale*4.f));
+            m_introMessage.setScale(m_scale, m_scale);
+            m_introMessage.setText("The more quickly\nand accurately you\ndestroy each wave,\nthe higher your\nscore will be.");
+        }
+
+        else if(dt.asSeconds() > 6.f && dt.asSeconds() < 8.f)
+        {
+            m_introMessage.setSize(64);
+            m_introMessage.setLabelOffset(sf::Vector2f(0.f,-m_scale*8.f));
+            m_introMessage.setScale(m_scale, m_scale);
+            m_introMessage.setText("Ready...");
+        }
+
+        else if(dt.asSeconds() > 8.f && dt.asSeconds() < 10.f)
+        {
+            m_introMessage.setSize(64);
+            m_introMessage.setLabelOffset(sf::Vector2f(0.f,-m_scale*4.f));
+            m_introMessage.setScale(m_scale, m_scale);
+            m_introMessage.setText("Go!!!");
+        }
+    }
+
+    if(m_wave == 3)
+    {
+        m_introMessage = gui::button("In each level of N.A.S.I.C.,\nyou will encounter a boss.", m_myfont, sf::Vector2f(window.getSize().x/2.f, window.getSize().y/2.f), gui::style::clean);
+
+        if(dt.asSeconds() < 2.f)
+        {
+            m_introMessage.setSize(32);
+            m_introMessage.setLabelOffset(sf::Vector2f(0.f,m_scale*4.f));
+        }
+
+        if(dt.asSeconds() > 2.f && dt.asSeconds() < 4.f)
+        {
+            m_introMessage.setSize(32);
+            m_introMessage.setLabelOffset(sf::Vector2f(0.f,m_scale*4.f));
+            m_introMessage.setScale(m_scale, m_scale);
+            m_introMessage.setText("After three waves of enemies,\na boss fight commences.");
+        }
+
+        else if(dt.asSeconds() > 4.f && dt.asSeconds() < 6.f)
+        {
+            m_introMessage.setSize(32);
+            m_introMessage.setLabelOffset(sf::Vector2f(0.f,m_scale*4.f));
+            m_introMessage.setScale(m_scale, m_scale);
+            m_introMessage.setText("Each boss has its\nunique weaknesses, and\nyou must learn to exploit them.");
+        }
+
+        else if(dt.asSeconds() > 6.f && dt.asSeconds() < 8.f)
+        {
+            m_introMessage.setSize(64);
+            m_introMessage.setLabelOffset(sf::Vector2f(0.f,-m_scale*8.f));
+            m_introMessage.setScale(m_scale, m_scale);
+            m_introMessage.setText("Ready...");
+        }
+
+        else if(dt.asSeconds() > 8.f && dt.asSeconds() < 10.f)
+        {
+            m_introMessage.setSize(64);
+            m_introMessage.setLabelOffset(sf::Vector2f(0.f,-m_scale*4.f));
+            m_introMessage.setScale(m_scale, m_scale);
+            m_introMessage.setText("Go!!!");
+        }
+    }
+}
+
+void nasic::level::showBossIntro(sf::RenderWindow& window, sf::Time dt)
+{
+    m_bossMessage = gui::button("Bosses are capable of\ndealing catastrophic damage...", m_myfont, sf::Vector2f(window.getSize().x/2.f, window.getSize().y/2.f), gui::style::clean);
+
+    if(dt.asSeconds() < 2.f)
+    {
+        m_bossMessage.setSize(32);
+        m_bossMessage.setLabelOffset(sf::Vector2f(0.f,m_scale*4.f));
+    }
+
+    if(dt.asSeconds() > 2.f && dt.asSeconds() < 4.f)
+    {
+        m_bossMessage.setSize(32);
+        m_bossMessage.setLabelOffset(sf::Vector2f(0.f,m_scale*4.f));
+        m_bossMessage.setScale(m_scale, m_scale);
+        m_bossMessage.setText("Fortunately for you,\n-Killer- has some weaknesses.");
+    }
+
+    else if(dt.asSeconds() > 4.f && dt.asSeconds() < 6.f)
+    {
+        m_bossMessage.setSize(32);
+        m_bossMessage.setLabelOffset(sf::Vector2f(0.f,m_scale*4.f));
+        m_bossMessage.setScale(m_scale, m_scale);
+        m_bossMessage.setText("Try firing into\nthe eyes...");
+    }
+
+    else if(dt.asSeconds() > 6.f && dt.asSeconds() < 8.f)
+    {
+        m_bossMessage.setSize(64);
+        m_bossMessage.setLabelOffset(sf::Vector2f(0.f,-m_scale*8.f));
+        m_bossMessage.setScale(m_scale, m_scale);
+        m_bossMessage.setText("Ready...");
+    }
+
+    else if(dt.asSeconds() > 8.f && dt.asSeconds() < 10.f)
+    {
+        m_bossMessage.setSize(64);
+        m_bossMessage.setLabelOffset(sf::Vector2f(0.f,-m_scale*4.f));
+        m_bossMessage.setScale(m_scale, m_scale);
+        m_bossMessage.setText("Go!!!");
+    }
+}
+
+void nasic::level::showBonus(sf::RenderWindow& window)
+{
+    m_timeBonusMessage.setString("Time Bonus X " + toString(m_timeBonusFactor));
+    m_timeBonusMessage.setColor(sf::Color(0,255,0,200));
+
+    m_survivalBonusMessage.setString("Survival Bonus + " + toString(m_survivalBonus));
+    m_survivalBonusMessage.setColor(sf::Color(255,255,0,200));
+
+    m_accuracyBonusMessage.setString("Accuracy Bonus + " + toString(m_accuracyBonus));
+    m_accuracyBonusMessage.setColor(sf::Color(255,0,255,200));
 }
 
 void nasic::level::initEnemies(sf::RenderWindow& window, int rows, int columns, float scale)
 {
     float offset;
+
     for(int i=0; i<rows; ++i)
     {
         for(int j=0; j<columns; ++j)
@@ -362,36 +1625,44 @@ void nasic::level::initEnemies(sf::RenderWindow& window, int rows, int columns, 
             {
             case 0:
             {
-                m_enemy = new nasic::enemy(nasic::enemy::enemyType::Rhiians, scale);
-                offset = scale*50.f;
-                m_enemy->setPosition(j * offset + m_winsizeX/2.f, i * offset + offset/2.f);
+                m_enemy = new nasic::enemy(nasic::enemy::enemyType::Rhiians, m_scale);
+                m_enemy->setId(sf::Vector2u(i,j));
+                offset = m_scale*50.f;
+                m_enemy->setInitialPosition(sf::Vector2f(j * offset + m_winsizeX/16.f, i * offset + offset/2.f));
+                m_enemy->setPosition(j * offset + m_winsizeX/16.f, i * offset + offset/2.f);
                 m_enemies.push_back(*m_enemy);
             }
             break;
 
             case 1:
             {
-                m_enemy = new nasic::enemy(nasic::enemy::enemyType::Agravu, scale);
-                offset = scale*50.f;
-                m_enemy->setPosition(j * offset + m_winsizeX/1.95f, i * offset + offset/2.f);
+                m_enemy = new nasic::enemy(nasic::enemy::enemyType::Agravu, m_scale);
+                m_enemy->setId(sf::Vector2u(i,j));
+                offset = m_scale*50.f;
+                m_enemy->setInitialPosition(sf::Vector2f(j * offset + m_winsizeX/16.f, i * offset + offset/2.f));
+                m_enemy->setPosition(j * offset + m_winsizeX/16.f, i * offset + offset/2.f);
                 m_enemies.push_back(*m_enemy);
             }
             break;
 
             case 2:
             {
-                m_enemy = new nasic::enemy(nasic::enemy::enemyType::Delsiriak, scale);
-                offset = scale*50.f;
-                m_enemy->setPosition(j * offset + m_winsizeX/1.95f, i * offset + offset/2.f);
+                m_enemy = new nasic::enemy(nasic::enemy::enemyType::Delsiriak, m_scale);
+                m_enemy->setId(sf::Vector2u(i,j));
+                offset = m_scale*50.f;
+                m_enemy->setInitialPosition(sf::Vector2f(j * offset + m_winsizeX/16.f, i * offset + offset/2.f));
+                m_enemy->setPosition(j * offset + m_winsizeX/16.f, i * offset + offset/5.f);
                 m_enemies.push_back(*m_enemy);
             }
             break;
 
             case 3:
             {
-                m_enemy = new nasic::enemy(nasic::enemy::enemyType::Gluorn, scale);
-                offset = scale*50.f;
-                m_enemy->setPosition(j * offset + m_winsizeX/2.f, i * offset + offset/2.f);
+                m_enemy = new nasic::enemy(nasic::enemy::enemyType::Gluorn, m_scale);
+                m_enemy->setId(sf::Vector2u(i,j));
+                offset = m_scale*50.f;
+                m_enemy->setInitialPosition(sf::Vector2f(j * offset + m_winsizeX/16.f, i * offset + offset/2.f));
+                m_enemy->setPosition(j * offset + m_winsizeX/16.f, i * offset + offset/6.f);
                 m_enemies.push_back(*m_enemy);
             }
             break;
@@ -401,6 +1672,9 @@ void nasic::level::initEnemies(sf::RenderWindow& window, int rows, int columns, 
             }
         }
     }
+    setEnemyInitStatus(true);
+    int m_dir = 1;
+    m_enemyMoveFrames = sf::Time::Zero;
 }
 
 void nasic::level::updateEnemies(sf::RenderWindow& window, sf::Time dt)
@@ -426,7 +1700,12 @@ void nasic::level::updateProjectiles(sf::Time dt)
 {
     for(m_pAmmoIt = m_playerAmmo.begin(); m_pAmmoIt != m_playerAmmo.end(); ++m_pAmmoIt)
     {
-        (*m_pAmmoIt).fire(dt);
+        m_pAmmoIt->fire(dt);
+    }
+
+    for(m_eAmmoIt = m_enemyAmmo.begin(); m_eAmmoIt != m_enemyAmmo.end(); ++m_eAmmoIt)
+    {
+        m_eAmmoIt->fire(dt);
     }
 }
 
@@ -435,10 +1714,14 @@ void nasic::level::checkEnemyCollisions(sf::RenderWindow& window)
     std::list<nasic::ammo>::iterator ammoIt;
     for(ammoIt = m_playerAmmo.begin(); ammoIt != m_playerAmmo.end(); ++ammoIt)
     {
-        if((*ammoIt).getPosition().y < 0.f)
+        if((*ammoIt).getPosition().y < 0.f)//erase the ammo if it leaves the screen
         {
             ammoIt = m_playerAmmo.erase(ammoIt);
-            std::cout<<m_playerAmmo.size()<<std::endl;
+
+            //update the miss count
+            m_misses++;
+
+            //std::cout<<m_playerAmmo.size()<<std::endl;
         }
     }
 
@@ -455,6 +1738,34 @@ void nasic::level::checkEnemyCollisions(sf::RenderWindow& window)
             m_explosion.setBuffer(m_explodBuff);
             m_explosion.play();
 
+            //update the score
+            switch(enemIt->getType())
+            {
+            case nasic::enemy::enemyType::Agravu:
+            {
+                m_score += 10;
+            }
+            break;
+
+            case nasic::enemy::enemyType::Delsiriak:
+            {
+                m_score += 10;
+            }
+            break;
+
+            case nasic::enemy::enemyType::Gluorn:
+            {
+                m_score += 50;
+            }
+            break;
+
+            case nasic::enemy::enemyType::Rhiians:
+            {
+                m_score += 50;
+            }
+            break;
+            }
+
             //erase the enemy from the list
             enemIt = m_enemies.erase(enemIt);
         }
@@ -463,9 +1774,9 @@ void nasic::level::checkEnemyCollisions(sf::RenderWindow& window)
         for(pAmmoIt = m_playerAmmo.begin(); pAmmoIt != m_playerAmmo.end(); ++pAmmoIt)
         {
             if(pAmmoIt->getPosition().y >= enemIt->getPosition().y
-                    && pAmmoIt->getPosition().y <= enemIt->getPosition().y + enemIt->getAABB().y
+                    && pAmmoIt->getPosition().y <= enemIt->getPosition().y + m_scale*enemIt->getAABB().y
                     && pAmmoIt->getPosition().x >= enemIt->getPosition().x
-                    && pAmmoIt->getPosition().x <= enemIt->getPosition().x + enemIt->getAABB().x*2.f)
+                    && pAmmoIt->getPosition().x <= enemIt->getPosition().x + m_scale*enemIt->getAABB().x)
             {
                 //erase the bullet from the list
                 pAmmoIt = m_playerAmmo.erase(pAmmoIt);
@@ -475,19 +1786,68 @@ void nasic::level::checkEnemyCollisions(sf::RenderWindow& window)
                 //set the explosion sound buffer and play it
                 m_explosion.setBuffer(m_hitBuff);
                 m_explosion.play();
+
+                //update the hit count
+                m_hits++;
             }
         }
     }
 }
 
+void nasic::level::checkPlayerCollisions(sf::RenderWindow& window)
+{
+    std::list<nasic::ammo>::iterator screenAmmoIt;
+    for(screenAmmoIt = m_enemyAmmo.begin(); screenAmmoIt != m_enemyAmmo.end(); ++screenAmmoIt)
+    {
+        if(screenAmmoIt->getPosition().y > window.getSize().y)
+        {
+            screenAmmoIt = m_enemyAmmo.erase(screenAmmoIt);
+        }
+    }
+
+    std::list<nasic::ammo>::iterator ammoIt;
+    for(ammoIt = m_enemyAmmo.begin(); ammoIt != m_enemyAmmo.end(); ++ammoIt)
+    {
+        if(ammoIt->getPosition().y >= hero.getPosition().y
+                && ammoIt->getPosition().y <= hero.getPosition().y + m_scale*hero.getAABB().y
+                && ammoIt->getPosition().x >= hero.getPosition().x
+                && ammoIt->getPosition().x <= hero.getPosition().x + m_scale*hero.getAABB().x)
+        {
+            //set the explosion position to the enemy location
+            m_explosionSpr.setPosition(ammoIt->getPosition().x, ammoIt->getPosition().y);
+            m_expAnim.playAnimation("explode");
+
+            //set the explosion sound buffer and play it
+            m_explosion.setBuffer(m_explodBuff);
+            m_explosion.play();
+
+            ammoIt = m_enemyAmmo.erase(ammoIt);
+        }
+    }
+}
+
+void nasic::level::purgeEnemies()
+{
+    m_enemies.clear();
+    m_enemyAmmo.clear();
+}
+
 void nasic::level::renderProjectiles(sf::RenderWindow& window)
 {
+    //draw player's ammo
     for(m_pAmmoIt = m_playerAmmo.begin(); m_pAmmoIt != m_playerAmmo.end(); ++m_pAmmoIt)
     {
         window.draw(*m_pAmmoIt);
     }
+
+    //draw enemy ammo
+    for(m_eAmmoIt = m_enemyAmmo.begin(); m_eAmmoIt != m_enemyAmmo.end(); ++m_eAmmoIt)
+    {
+        window.draw(*m_eAmmoIt);
+    }
 }
 
+//not a part of the level object....
 void nasic::addFrames(thor::FrameAnimation& animation, int w, int h, int y, int xFirst, int xLast, float duration)
 {
     const int step = (xFirst < xLast) ? +1 : -1;

@@ -24,14 +24,44 @@ Permission is granted to anyone to use this software for any purpose, including 
 #ifndef YOUWIN_HPP
 #define YOUWIN_HPP
 
+#include <iostream>
+#include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
+#include <opstruct.hpp>
+#include <interpolate.hpp>
+#include <starfield.hpp>
 
-class youwin
+namespace nasic
 {
-    public:
-        youwin();
-        virtual ~youwin();
-    protected:
-    private:
-};
+    class youwin
+    {
+        public:
+            youwin();
+            ~youwin();
+
+            void show(sf::RenderWindow& window);
+            sf::Uint32 getState(){return m_winState;};
+
+            enum winState
+            {
+                uninitialized,
+                showing,
+                done
+            };
+
+        private:
+            sf::Uint32 m_winState;
+            nasic::opstruct m_options;
+            float m_vol;
+            float m_eff;
+            float m_diff;
+            std::string m_filename;
+            sf::Uint32 m_initialVol;
+            sf::Uint32 m_initialEff;
+            sf::Uint32 m_initialDif;
+            sf::SoundBuffer m_transitionBuff;
+            sf::Sound m_transition;
+    };
+}
 
 #endif // YOUWIN_HPP

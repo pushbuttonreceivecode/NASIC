@@ -21,60 +21,48 @@ Permission is granted to anyone to use this software for any purpose, including 
     3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifndef GAME_HPP
-#define GAME_HPP
+#ifndef GAMEOVER_HPP
+#define GAMEOVER_HPP
 
+#include <iostream>
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
-#include <iostream>
-#include <intro.hpp>
-#include <menu.hpp>
-#include <options.hpp>
-#include <info.hpp>
-#include <level.hpp>
-#include <youwin.hpp>
-#include <gameOver.hpp>
+#include <opstruct.hpp>
+#include <interpolate.hpp>
+#include <starfield.hpp>
 
 namespace nasic
 {
-    class Game
+    class gameOver
     {
         public:
-            Game();
-            ~Game();
+            gameOver();
+            ~gameOver();
 
-            static void init();
+            void show(sf::RenderWindow& window);
 
-        private:
-            static void run();
+            sf::Uint32 getState(){return m_gameOverState;};
 
-            static void intro();
-            static void menu();
-            static void options();
-            static void info();
-            static void level();
-            static void win();
-            static void lose();
-
-            static bool isQuitting();
-
-            enum state
+            enum gameOverState
             {
-                s_uninitialized,
-                s_intro,
-                s_menu,
-                s_info,
-                s_options,
-                s_level,
-                s_win,
-                s_lose,
-                s_quit
+                uninitialized,
+                playing,
+                done,
             };
 
         private:
-            static sf::Uint32 m_state;
-            static sf::RenderWindow m_window;
+            sf::Uint32 m_gameOverState;
+            nasic::opstruct m_options;
+            float m_vol;
+            float m_eff;
+            float m_diff;
+            std::string m_filename;
+            sf::Uint32 m_initialVol;
+            sf::Uint32 m_initialEff;
+            sf::Uint32 m_initialDif;
+            sf::SoundBuffer m_transitionBuff;
+            sf::Sound m_transition;
     };
 }
 
-#endif // GAME_HPP
+#endif // GAMEOVER_HPP

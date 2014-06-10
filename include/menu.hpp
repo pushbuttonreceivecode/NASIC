@@ -31,6 +31,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 #include <starfield.hpp>
 #include <hexgrid.hpp>
 #include <opstruct.hpp>
+#include <interpolate.hpp>
 
 namespace nasic
 {
@@ -59,6 +60,8 @@ namespace nasic
             sf::Uint32 m_initialVol;
             sf::Uint32 m_initialEff;
             sf::Uint32 m_initialDif;
+            sf::SoundBuffer m_transitionBuff;
+            sf::Sound m_transition;
 
             float m_scale;
             float m_winsizeX;

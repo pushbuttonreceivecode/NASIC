@@ -51,9 +51,13 @@ namespace nasic
 
             void heal(int h);
 
-            sf::Uint32 lives(){return m_data.lives;};
+            void init(sf::RenderWindow& window);
+
+            float getHealth(){return m_data.health;};
 
             sf::Vector2f getAABB();
+
+            sf::Uint32 getType(){return m_type;};
 
             void update(sf::RenderWindow& window, sf::Time dt);
 
@@ -94,10 +98,12 @@ namespace nasic
                 int health;
                 int strength;
                 int speed;
-                int lives;
             };
             data m_data;
             data m_initialdata;
+
+            sf::Clock deathClock;
+            bool m_init;
 
             sf::Sprite m_spr;
             sf::Texture m_tex;
@@ -105,12 +111,6 @@ namespace nasic
             sf::Uint32 m_state;
             sf::Uint32 m_type;
             sf::Uint32 m_ammo;
-
-            thor::Animator<sf::Sprite, std::string> m_animator;
-            thor::FrameAnimation m_frames;
-
-            void addFrames(thor::FrameAnimation& animation, int w, int h, int y, int xFirst, int xLast, float duration = 1.f);
-
     };
 }
 

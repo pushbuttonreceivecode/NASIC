@@ -61,7 +61,9 @@ gui::optionbox::optionbox(std::string label, sf::Vector2f pos, sf::Uint32 precis
     m_label.setPosition(m_box.getPosition().x - m_box.getGlobalBounds().width/2.1f, m_box.getPosition().y - m_box.getGlobalBounds().height/2.5f);
 
     m_up = gui::button("  Up  ", myfont, sf::Vector2f(0.f,0.f), gui::style::none);
+    m_up.makeActive(false);
     m_down = gui::button("  Down  ", myfont, sf::Vector2f(0.f,0.f), gui::style::none);
+    m_down.makeActive(false);
 
     m_up.setPosition(sf::Vector2f(m_box.getPosition().x - m_box.getGlobalBounds().width/2.f + m_up.getDimensions().x, m_box.getPosition().y));
     m_down.setPosition(sf::Vector2f(m_box.getPosition().x + m_box.getGlobalBounds().width/2.f - m_down.getDimensions().x/1.25f, m_box.getPosition().y));

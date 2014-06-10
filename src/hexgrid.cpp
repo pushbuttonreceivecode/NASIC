@@ -118,6 +118,7 @@ nasic::hexgrid::hexgrid(sf::RenderWindow& window, sf::Uint32 style, const float&
                     {
                         case hexStyle::translucent:
                         {
+                            hexagon.setOutlineColor(sf::Color(255,255,255,200));
                             hexagon.setFillColor(sf::Color(255,255,255,100));
                         }
                         break;
@@ -131,12 +132,14 @@ nasic::hexgrid::hexgrid(sf::RenderWindow& window, sf::Uint32 style, const float&
 
                         case hexStyle::green:
                         {
+                            hexagon.setOutlineColor(sf::Color(0,200,0,200));
                             hexagon.setFillColor(sf::Color(0,255,0,100));
                         }
                         break;
 
                         case hexStyle::cyan:
                         {
+                            hexagon.setOutlineColor(sf::Color(0,200,200,200));
                             hexagon.setFillColor(sf::Color(0,255,255,100));
                         }
                         break;
@@ -151,6 +154,7 @@ nasic::hexgrid::hexgrid(sf::RenderWindow& window, sf::Uint32 style, const float&
                     {
                         case hexStyle::translucent:
                         {
+                            hexagon.setOutlineColor(sf::Color(255,255,255,200));
                             hexagon.setFillColor(sf::Color(255,255,255,100));
                         }
                         break;
@@ -164,12 +168,14 @@ nasic::hexgrid::hexgrid(sf::RenderWindow& window, sf::Uint32 style, const float&
 
                         case hexStyle::green:
                         {
+                            hexagon.setOutlineColor(sf::Color(0,200,0,200));
                             hexagon.setFillColor(sf::Color(0,255,0,100));
                         }
                         break;
 
                         case hexStyle::cyan:
                         {
+                            hexagon.setOutlineColor(sf::Color(0,200,200,200));
                             hexagon.setFillColor(sf::Color(0,255,255,100));
                         }
                         break;

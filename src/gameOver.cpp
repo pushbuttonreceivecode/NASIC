@@ -21,12 +21,12 @@ Permission is granted to anyone to use this software for any purpose, including 
     3. This notice may not be removed or altered from any source distribution.
 */
 
-#include <youwin.hpp>
+#include <gameOver.hpp>
 
-nasic::youwin::youwin()
+nasic::gameOver::gameOver()
 {
-    using nasic::youwin;
-    m_winState = winState::uninitialized;
+    using nasic::gameOver;
+    m_gameOverState = gameOverState::uninitialized;
 
     //sound and settings
     //read option settings from file
@@ -51,22 +51,22 @@ nasic::youwin::youwin()
 
     //load the transition sound file
     //generated with musagi ;)
-    if(!m_transitionBuff.loadFromFile("sound/winner.wav"))
+    if(!m_transitionBuff.loadFromFile("sound/loser.wav"))
     {
-        std::cerr<<"Could not load winner.wav."<<std::endl;
+        std::cerr<<"Could not load lost.wav."<<std::endl;
     }
     m_transition.setBuffer(m_transitionBuff);
     m_transition.setVolume(m_initialEff);
 }
 
-nasic::youwin::~youwin()
+nasic::gameOver::~gameOver()
 {
 
 }
 
-void nasic::youwin::show(sf::RenderWindow& window)
+void nasic::gameOver::show(sf::RenderWindow& window)
 {
-    using nasic::youwin;
+    using nasic::gameOver;
 
     sf::VideoMode mode = sf::VideoMode::getDesktopMode();
     float scale = mode.width/800.f;
@@ -75,10 +75,10 @@ void nasic::youwin::show(sf::RenderWindow& window)
     window.setFramerateLimit(60);//set the refresh limit to the current frame rate 60fps
 
     //bail if the options are not in uninitialized state
-    if(!m_winState == winState::uninitialized)
+    if(!m_gameOverState == gameOverState::uninitialized)
         return;
 
-    m_winState = winState::showing;
+    m_gameOverState = gameOverState::playing;
 
     //play the transition sound...
     m_transition.play();
@@ -90,7 +90,7 @@ void nasic::youwin::show(sf::RenderWindow& window)
         std::cerr<<"Could not load contb.ttf"<<std::endl;
     }
 
-    sf::Text message("A Winner is You!!!", myfont, 96);
+    sf::Text message("Game Over", myfont, 128);
     message.setOrigin(message.getGlobalBounds().width/2.f, message.getGlobalBounds().height/2.f);
     message.setScale(scale,scale);
     message.setPosition(window.getSize().x/2.f, window.getSize().y/2.f);
@@ -133,7 +133,7 @@ void nasic::youwin::show(sf::RenderWindow& window)
         {
             if(e.type == sf::Event::Closed)
             {
-                m_winState = winState::done;
+                m_gameOverState = gameOverState::done;
                 return;
             }
 
@@ -144,7 +144,7 @@ void nasic::youwin::show(sf::RenderWindow& window)
 
                 case sf::Keyboard::Escape:
                 {
-                    m_winState = winState::done;
+                    m_gameOverState = gameOverState::done;
                     return;
                 }
                 break;
@@ -193,11 +193,11 @@ void nasic::youwin::show(sf::RenderWindow& window)
 
         if(aliveFrames.asSeconds() > 10.f)
         {
-            m_winState = winState::done;
+            m_gameOverState = gameOverState::done;
             return;
         }
         else
-            m_winState = winState::showing;
+            m_gameOverState = gameOverState::playing;
 
         window.clear();
         window.draw(stars);

@@ -36,6 +36,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 #include <button.hpp>
 #include <optionbox.hpp>
 #include <opstruct.hpp>
+#include <StringHelpers.hpp>
 
 namespace nasic
 {
@@ -69,6 +70,8 @@ private:
     sf::Uint32 m_initialVol;
     sf::Uint32 m_initialEff;
     sf::Uint32 m_initialDif;
+    sf::SoundBuffer m_transitionBuff;
+    sf::Sound m_transition;
 };
 
 }

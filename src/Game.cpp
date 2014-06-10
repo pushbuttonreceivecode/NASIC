@@ -25,12 +25,12 @@ Permission is granted to anyone to use this software for any purpose, including 
 
 nasic::Game::Game()
 {
-    //ctor
+
 }
 
 nasic::Game::~Game()
 {
-    //dtor
+
 }
 
 void nasic::Game::init()
@@ -44,13 +44,13 @@ void nasic::Game::init()
     sf::VideoMode mode = sf::VideoMode::getDesktopMode();
 
     std::vector<sf::VideoMode> modes = mode.getFullscreenModes();
-    for (std::size_t i = 0; i < modes.size(); ++i)
+    /*for (std::size_t i = 0; i < modes.size(); ++i)
     {
         sf::VideoMode mode = modes[i];
         std::cout << "Mode #" << i << ": "
         << mode.width << "x" << mode.height << " - "
         << mode.bitsPerPixel << " bpp" << std::endl;
-    }
+    }*/
 
     sf::ContextSettings settings;
     settings.depthBits = 24;
@@ -68,7 +68,7 @@ void nasic::Game::init()
     {
         run();
     }
-    std::cout<<"Quitting..."<<std::endl;
+    //std::cout<<"Quitting..."<<std::endl;
     m_window.close();
 }
 
@@ -134,7 +134,7 @@ void nasic::Game::intro()
 {
     using nasic::Game;
     m_window.setTitle("Intro");
-    std::cout<<"Intro State"<<std::endl;
+    //std::cout<<"Intro State"<<std::endl;
 
     //create an intro object
     nasic::intro gameIntro;
@@ -144,7 +144,7 @@ void nasic::Game::intro()
 void nasic::Game::menu()
 {
     m_window.setTitle("Menu");
-    std::cout<<"Menu State"<<std::endl;
+    //std::cout<<"Menu State"<<std::endl;
 
     //create a menu object
     nasic::menu gameMenu;
@@ -162,7 +162,7 @@ void nasic::Game::menu()
 void nasic::Game::info()
 {
     m_window.setTitle("Info");
-    std::cout<<"Info State"<<std::endl;
+    //std::cout<<"Info State"<<std::endl;
 
     //create an info object
     nasic::info inf;
@@ -174,7 +174,7 @@ void nasic::Game::info()
 void nasic::Game::options()
 {
     m_window.setTitle("Options");
-    std::cout<<"Options State"<<std::endl;
+    //std::cout<<"Options State"<<std::endl;
 
     //create an options object
     nasic::options opt;
@@ -186,33 +186,41 @@ void nasic::Game::options()
 void nasic::Game::level()
 {
     m_window.setTitle("Level");
-    std::cout<<"Level State"<<std::endl;
+    //std::cout<<"Level State"<<std::endl;
 
     //create a level object
-    nasic::level lvl;
+    nasic::level lvl(m_window);
     lvl.show(m_window);
     if(lvl.levelState() == nasic::level::exit)
         m_state = state::s_menu;
+    else if(lvl.levelState() == nasic::level::lost)
+        m_state = state::s_lose;
+    else if(lvl.levelState() == nasic::level::won)
+        m_state = state::s_win;
 }
 
 void nasic::Game::win()
 {
-    m_window.setTitle("You Win");
-    std::cout<<"Win State"<<std::endl;
+    m_window.setTitle("You Win!");
+    //std::cout<<"Win State"<<std::endl;
 
     //create a win object
-
-    m_state = state::s_menu;
+    nasic::youwin winner;
+    winner.show(m_window);
+    if(winner.getState() == nasic::youwin::done)
+        m_state = state::s_menu;
 }
 
 void nasic::Game::lose()
 {
-    m_window.setTitle("You Lose");
-    std::cout<<"Lose State"<<std::endl;
+    m_window.setTitle("You Lose!");
+    //std::cout<<"Lose State"<<std::endl;
 
     //create a lose object
-
-    m_state = state::s_menu;
+    nasic::gameOver loser;
+    loser.show(m_window);
+    if(loser.getState() == nasic::gameOver::done)
+        m_state = state::s_menu;
 }
 
 //initialize static member variables

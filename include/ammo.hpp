@@ -26,6 +26,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 
 #include <iostream>
 #include <SFML/Graphics.hpp>
+#include <interpolate.hpp>
 
 namespace nasic
 {
@@ -35,6 +36,8 @@ namespace nasic
             ammo();
             ammo(sf::Uint32 type, sf::Vector2f initPos, const float& scale);
             ~ammo();
+
+            sf::Uint32 getType(){return m_type;};
 
             void fire(sf::Time dt);
 
@@ -49,7 +52,8 @@ namespace nasic
                 rhiians = 6,
                 agravu = 7,
                 delsiriak = 8,
-                gluorn = 9
+                gluorn = 9,
+                missile = 10
             };
 
         private:
@@ -57,7 +61,13 @@ namespace nasic
         private:
             float m_velY;
             sf::Uint32 m_type;
-            sf::Texture m_tex;
+            sf::Texture m_shot;
+            sf::Texture m_slime;
+            sf::Texture m_fire;
+            sf::Texture m_spiral;
+            sf::Texture m_laser;
+            sf::Texture m_missile;
+            sf::Texture m_mine;
 
             float m_scale;
     };

@@ -25,7 +25,6 @@ Permission is granted to anyone to use this software for any purpose, including 
 
 nasic::options::options()
 {
-    //ctor
     //reset the state each time the object is created
     using nasic::options;
     m_optionstate = optionstate::s_uninitialized;
@@ -44,17 +43,25 @@ nasic::options::options()
     {
         std::cout<<m_options.m_volume<<"\n"<<m_options.m_effects<<"\n"<<m_options.m_difficulty<<std::endl;
 
-        m_initialVol = m_options.m_volume;
-        m_initialEff = m_options.m_effects;
+        m_initialVol = m_options.m_volume/5;
+        m_initialEff = m_options.m_effects/5;
         m_initialDif = m_options.m_difficulty;
     }
 
-    std::cout<<m_initialVol<<"\n"<<m_initialEff<<"\n"<<m_initialDif<<std::endl;
+    //std::cout<<m_initialVol<<"\n"<<m_initialEff<<"\n"<<m_initialDif<<std::endl;
+
+    //load the transition sound file
+    if(!m_transitionBuff.loadFromFile("sound/transition.wav"))
+    {
+        std::cerr<<"Could not load transition.wav."<<std::endl;
+    }
+    m_transition.setBuffer(m_transitionBuff);
+    m_transition.setVolume(m_initialEff*5);
 }
 
 nasic::options::~options()
 {
-    //dtor
+
 }
 
 void nasic::options::show(sf::RenderWindow& window)
@@ -78,6 +85,9 @@ void nasic::options::show(sf::RenderWindow& window)
     //bail if the options are not in uninitialized state
     if(!m_optionstate == optionstate::s_uninitialized)
         return;
+
+    //play the transition sound...
+    m_transition.play();
 
     //create info stuff
     sf::Color bg = sf::Color(255,150,0,200);
@@ -103,6 +113,16 @@ void nasic::options::show(sf::RenderWindow& window)
     title.setColor(darkred);
     title.setPosition(window.getSize().x * 0.01f, window.getSize().y * 0.01f);
 
+    sf::Text volLabel(" ", myfont, 48);
+    volLabel.setOrigin(volLabel.getGlobalBounds().width/2.f,0.f);
+    volLabel.setPosition(window.getSize().x/2.f, window.getSize().y/4.f);
+    sf::Text effLabel(" ", myfont, 48);
+    effLabel.setOrigin(effLabel.getGlobalBounds().width/2.f,0.f);
+    effLabel.setPosition(window.getSize().x/2.f, window.getSize().y/2.f);
+    sf::Text difLabel(" ", myfont, 48);
+    difLabel.setOrigin(difLabel.getGlobalBounds().width/2.f,0.f);
+    difLabel.setPosition(window.getSize().x/2.f, window.getSize().y/1.25f);
+
     sf::ConvexShape bgBox = thor::Shapes::roundedRect(sf::Vector2f(window.getSize().x, window.getSize().y), 0.f, sf::Color(bg), 0.f, sf::Color(none));
     bgBox.setPosition(0.f,0.f);
 
@@ -121,6 +141,11 @@ void nasic::options::show(sf::RenderWindow& window)
     eff.setVal(m_initialEff);
     dif.setVal(m_initialDif);
 
+    //initialize focus to volume controls
+    vol.setFocus(true);
+    eff.setFocus(false);
+    dif.setFocus(false);
+
     sf::SoundBuffer menubuff;
     if(!menubuff.loadFromFile("sound/select.wav"))
     {
@@ -129,14 +154,15 @@ void nasic::options::show(sf::RenderWindow& window)
 
     sf::Sound menusound;
     menusound.setBuffer(menubuff);
-    menusound.setVolume(m_initialVol*5.f);
+    menusound.setVolume(m_initialEff*5.f);
 
     sf::Music menumusic;
-    if(!menumusic.openFromFile("sound/title.ogg"))
+    if(!menumusic.openFromFile("sound/theme.ogg"))
     {
-        std::cout<<"Could not open stream for title.ogg"<<std::endl;
+        std::cout<<"Could not open stream for theme.ogg"<<std::endl;
     }
-    menumusic.setVolume(m_initialEff*5.f);
+    menumusic.setVolume(m_initialVol*5.f);
+    menumusic.setLoop(true);
     menumusic.play();
 
     bool running = true;
@@ -226,7 +252,7 @@ void nasic::options::show(sf::RenderWindow& window)
 
         m_vol = vol.getVal() * 5.f;
         menumusic.setVolume(m_vol);
-        m_options.m_volume = vol.getVal();
+        m_options.m_volume = m_vol;
 
         switch(focus)
         {
@@ -265,10 +291,65 @@ void nasic::options::show(sf::RenderWindow& window)
             menusound.play();
 
         m_eff = eff.getVal() * 5.f;
-            menusound.setVolume(m_eff);
+        menusound.setVolume(m_eff);
 
-        m_options.m_effects = eff.getVal();
+        m_options.m_effects = m_eff;
         m_options.m_difficulty = dif.getVal();
+
+        //update labels
+        switch(vol.getVal())
+        {
+        case 0:
+            volLabel.setString("Off");
+            break;
+        default:
+            volLabel.setString(toString(vol.getVal()));
+            break;
+        }
+
+        switch(eff.getVal())
+        {
+        case 0:
+            effLabel.setString(toString(eff.getVal()));
+            break;
+        default:
+            effLabel.setString(toString(eff.getVal()));
+            break;
+        }
+
+        switch(dif.getVal())
+        {
+        case 0:
+            {
+                difLabel.setColor(sf::Color(255,100,100,255));
+                difLabel.setString("Infantile");
+            }
+            break;
+        case 1:
+            {
+                difLabel.setColor(sf::Color(200,0,200,255));
+                difLabel.setString("Easy as Pie");
+            }
+            break;
+        case 2:
+            {
+                difLabel.setColor(sf::Color(0,200,0,255));
+                difLabel.setString("Normal");
+            }
+            break;
+        case 3:
+            {
+                difLabel.setColor(sf::Color(200,0,0,255));
+                difLabel.setString("Very Hard");
+            }
+            break;
+        default:
+            break;
+        }
+
+        volLabel.setOrigin(volLabel.getGlobalBounds().width/2.f,0.f);
+        effLabel.setOrigin(effLabel.getGlobalBounds().width/2.f,0.f);
+        difLabel.setOrigin(difLabel.getGlobalBounds().width/2.f,0.f);
 
         window.clear();
         window.draw(stars);
@@ -278,6 +359,9 @@ void nasic::options::show(sf::RenderWindow& window)
         window.draw(eff);
         window.draw(dif);
         window.draw(title);
+        window.draw(volLabel);
+        window.draw(effLabel);
+        window.draw(difLabel);
         window.display();
     }
     std::cout<<m_options.m_volume<<"\n"<<m_options.m_effects<<"\n"<<m_options.m_difficulty<<std::endl;
