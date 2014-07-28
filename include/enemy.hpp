@@ -51,6 +51,7 @@ namespace nasic
             void damage(int d);
             int getHealth(){return m_data.health;};
 
+            void animate(sf::Time dt);
             void update(sf::Time dt);
 
             enum enemyType

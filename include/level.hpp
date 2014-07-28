@@ -32,7 +32,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 #include <Thor/Math/Distributions.hpp>
 #include <THOR/Shapes.hpp>
 #include <starfield.hpp>
-#include <enemy.hpp>
+#include <enemyWave.hpp>
 #include <player.hpp>
 #include <killer.hpp>
 #include <ammo.hpp>
@@ -67,20 +67,11 @@ namespace nasic
             };
 
         private:
-            void initEnemies(sf::RenderWindow& window, int rows, int columns, float scale);
             void showIntro(sf::RenderWindow& window, sf::Time dt);
             bool introIsDone(){return m_introStatus;};
             void setIntroStatus(bool b){m_introStatus = b;};
             void showBossIntro(sf::RenderWindow& window, sf::Time dt);
             void showBonus(sf::RenderWindow& window);
-            void createWave();
-            void updateEnemies(sf::RenderWindow& window, sf::Time dt);
-            void renderEnemies(sf::RenderWindow& window);
-            void updateProjectiles(sf::Time dt);
-            void renderProjectiles(sf::RenderWindow& window);
-            void checkEnemyCollisions(sf::RenderWindow& window);
-            void checkPlayerCollisions(sf::RenderWindow& window);
-            void purgeEnemies();
             void pause();
 
         private:
@@ -99,31 +90,16 @@ namespace nasic
             sf::Text m_timeLabel;
             static sf::Uint32 m_levelstate;
             bool m_introStatus;
-            std::list<nasic::enemy> m_enemies;
-            nasic::enemy* m_enemy;
-            sf::Time m_enemyMoveFrames;
+
+            nasic::enemyWave m_enemyWave;
             int m_wave;
-            bool m_enemyInitStatus;
-            bool enemyInitStatus(){return m_enemyInitStatus;};
-            void setEnemyInitStatus(bool b){m_enemyInitStatus = b;};
+
             nasic::killer m_killer;
-            nasic::particle m_particle;
-
-            nasic::ammo* m_ammoPtr;
-
-            std::list<nasic::ammo> m_playerAmmo;
-            std::list<nasic::ammo>::iterator m_pAmmoIt;
-
-            std::list<nasic::ammo> m_enemyAmmo;
-            std::list<nasic::ammo> m_missileAmmo;
-            std::list<nasic::ammo>::iterator m_missileIt;
-            std::list<nasic::ammo>::iterator m_eAmmoIt;
 
             float m_winsizeX;
             float m_winsizeY;
-            float m_scale;
+            float m_scaleX;
             float m_scaleY;
-            int m_dir;
 
             nasic::opstruct m_options;
             int m_musicVolume;
@@ -144,6 +120,8 @@ namespace nasic
             sf::Sound m_explosion;
             sf::SoundBuffer m_hitBuff;
             sf::SoundBuffer m_explodBuff;
+            thor::Animator<sf::Sprite, std::string> m_expAnim;
+            thor::FrameAnimation m_expFrames;
 
             sf::SoundBuffer m_shotBuff;
             sf::Sound m_shot;
@@ -155,9 +133,6 @@ namespace nasic
             sf::Sound m_pauseSnd;
 
             sf::Music m_music;
-
-            thor::Animator<sf::Sprite, std::string> m_expAnim;
-            thor::FrameAnimation m_expFrames;
     };
 }
 

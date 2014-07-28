@@ -128,7 +128,7 @@ nasic::enemy::enemy(sf::Uint32 type, const float& scale)
 
 nasic::enemy::~enemy()
 {
-    //dtor
+
 }
 
 sf::Uint32 nasic::enemy::getState()
@@ -229,7 +229,7 @@ void nasic::enemy::handleState()
     {
         case enemyState::normal:
         {
-
+            //do nothing...
         }
         break;
 
@@ -244,13 +244,18 @@ void nasic::enemy::handleState()
     }
 }
 
-void nasic::enemy::update(sf::Time dt)
+void nasic::enemy::animate(sf::Time dt)
 {
-    updateState();
-    handleState();
-
     m_animator.update(dt);
     m_animator.animate(*this);
+}
+
+void nasic::enemy::update(sf::Time dt)
+{
+    handleState();
+    updateState();
+
+    animate(dt);
 }
 
 void nasic::enemy::addFrames(thor::FrameAnimation& animation, int w, int h, int y, int xFirst, int xLast, float duration)

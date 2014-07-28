@@ -218,7 +218,7 @@ void nasic::ammo::fire(sf::Time dt)
             if(m_velY >= terminalVelocity)
                 m_velY = terminalVelocity;
             else
-                m_velY = m_scale*50.f*(interpolate::expoEaseIn(dt.asSeconds(), 0.f,1.f,3.f));
+                m_velY = m_scale*(interpolate::quarticEaseIn(dt.asSeconds(), 0.f,1000.f,2.f));
 
             this->move(0.f, m_velY);
         }

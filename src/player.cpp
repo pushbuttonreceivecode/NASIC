@@ -160,6 +160,18 @@ sf::Vector2f nasic::player::getAABB()
     return val;
 }
 
+void nasic::player::initAmmo(bool shooting, float scale, sf::Sound& shot)
+{
+    if(shooting && m_playerAmmo.size() < 2)
+    {
+        m_ammoPtr = new nasic::ammo(nasic::ammo::ammoType::warrior, sf::Vector2f(m_spr.getPosition().x + m_spr.getGlobalBounds().width/2.f, m_spr.getPosition().y), scale);
+        m_playerAmmo.push_back(*m_ammoPtr);
+        //std::cout<<m_playerAmmo.size()<<std::endl;
+
+        shot.play();
+    }
+}
+
 void nasic::player::updateState()
 {
     using nasic::player;
@@ -250,8 +262,141 @@ void nasic::player::update(sf::RenderWindow& window, sf::Time dt)
     handleState(window);
 }
 
+void nasic::player::updateProjectiles(sf::Time dt)
+{
+    for(m_pAmmoIt = m_playerAmmo.begin(); m_pAmmoIt != m_playerAmmo.end(); ++m_pAmmoIt)
+    {
+        m_pAmmoIt->fire(dt);
+    }
+}
+
+sf::Uint32 nasic::player::checkEnemyCollisions(sf::RenderWindow& window, std::list<nasic::enemy>& enemies, sf::Sprite& explosion, sf::Sound& explode, sf::SoundBuffer& buffer, sf::SoundBuffer& hitbuffer, thor::Animator<sf::Sprite, std::string>& explosionAnim, std::string animation, float scale)
+{
+    sf::Uint32 tempHit;
+
+    std::list<nasic::ammo>::iterator ammoIt;
+    for(ammoIt = m_playerAmmo.begin(); ammoIt != m_playerAmmo.end(); ++ammoIt)
+    {
+        if((*ammoIt).getPosition().y < 0.f)//erase the ammo if it leaves the screen
+        {
+            ammoIt = m_playerAmmo.erase(ammoIt);
+
+            //std::cout<<m_playerAmmo.size()<<std::endl;
+            tempHit = nasic::player::hitList::miss;
+        }
+    }
+
+    std::list<nasic::enemy>::iterator enemIt;
+    for(enemIt = enemies.begin(); enemIt != enemies.end(); ++enemIt)
+    {
+        std::list<nasic::ammo>::iterator pAmmoIt;
+        for(pAmmoIt = m_playerAmmo.begin(); pAmmoIt != m_playerAmmo.end(); ++pAmmoIt)
+        {
+            if(pAmmoIt->getPosition().y >= enemIt->getPosition().y
+                    && pAmmoIt->getPosition().y <= enemIt->getPosition().y + scale*enemIt->getAABB().y
+                    && pAmmoIt->getPosition().x >= enemIt->getPosition().x
+                    && pAmmoIt->getPosition().x <= enemIt->getPosition().x + scale*enemIt->getAABB().x)
+            {
+                //erase the bullet from the list
+                pAmmoIt = m_playerAmmo.erase(pAmmoIt);
+
+                enemIt->damage(1);//damage the enemy
+
+                if(enemIt->getState() == nasic::enemy::enemyState::dead)
+                {
+                    //set the explosion position to the enemy location
+                    explosion.setPosition(enemIt->getPosition().x, enemIt->getPosition().y);
+
+                    //set the explosion sound buffer and play it
+                    explode.setBuffer(buffer);
+                    explode.play();
+
+                    //play the explosion animation
+                    explosionAnim.playAnimation(animation, false);
+
+                    //erase the enemy from the list
+                    enemIt = enemies.erase(enemIt);
+
+                    //return results for updating the score
+                    switch(enemIt->getType())
+                    {
+                    case nasic::enemy::enemyType::Agravu:
+                    {
+
+                        tempHit = nasic::player::hitList::agravu;
+                    }
+                    break;
+
+                    case nasic::enemy::enemyType::Delsiriak:
+                    {
+                        tempHit = nasic::player::hitList::delsiriak;
+                    }
+                    break;
+
+                    case nasic::enemy::enemyType::Gluorn:
+                    {
+                        tempHit = nasic::player::hitList::gluorn;
+                    }
+                    break;
+
+                    case nasic::enemy::enemyType::Rhiians:
+                    {
+                        tempHit = nasic::player::hitList::rhiians;
+                    }
+                    break;
+
+                    default:
+                        break;
+                    }
+                }
+
+                else if(enemIt->getState() != nasic::enemy::enemyState::dead)
+                {
+                    //no score update, but we keep track of the hits ;)
+                    explode.setBuffer(hitbuffer);
+                    explode.play();
+
+                    tempHit = nasic::player::hitList::hit;
+                }
+            }
+        }
+    }
+
+    return tempHit;
+}
+
+bool nasic::player::checkBossCollisions(nasic::killer& killer)
+{
+    std::list<nasic::ammo>::iterator playerAmmoIt;
+    for(playerAmmoIt = m_playerAmmo.begin(); playerAmmoIt != m_playerAmmo.end(); ++playerAmmoIt)
+    {
+        if(playerAmmoIt->getPosition().y < killer.getTargetPosition().y + killer.getTargetAABB().y
+                && playerAmmoIt->getPosition().y > killer.getTargetPosition().y
+                && playerAmmoIt->getPosition().x < killer.getTargetPosition().x + killer.getTargetAABB().x
+                && playerAmmoIt->getPosition().x > killer.getTargetPosition().x)
+        {
+            killer.damage(2);//this is arbitrary, adjust accordingly to alter the difficulty
+            playerAmmoIt = m_playerAmmo.erase(playerAmmoIt);
+            return true;
+        }
+
+        else if(playerAmmoIt->getPosition().y < 0.f)
+        {
+            playerAmmoIt = m_playerAmmo.erase(playerAmmoIt);
+            return false;
+        }
+    }
+}
+
 void nasic::player::draw(sf::RenderTarget& target, sf::RenderStates states) const
 {
     states.transform *= getTransform();
     target.draw(m_spr, states);
+
+    //draw player's ammo
+    std::list<nasic::ammo>::const_iterator pAmmoIt;
+    for(pAmmoIt = m_playerAmmo.begin(); pAmmoIt != m_playerAmmo.end(); ++pAmmoIt)
+    {
+        target.draw(*pAmmoIt, states);
+    }
 }

@@ -27,9 +27,15 @@ Permission is granted to anyone to use this software for any purpose, including 
 #include <iostream>
 #include <SFML/Graphics.hpp>
 #include <THOR/Animation.hpp>
+#include <killer.hpp>
+#include <enemyWave.hpp>
 
 namespace nasic
 {
+    //forward declaration of nasic::enemyWave
+    //to avoid circular references (enemyWave includes player)
+    class enemyWave;
+
     class player : public sf::Drawable, public sf::Transformable
     {
         public:
@@ -46,6 +52,7 @@ namespace nasic
             sf::Uint32 getState();
 
             void setAmmo(sf::Uint32 ammo){m_ammo = ammo;};
+            void initAmmo(bool shooting, float scale, sf::Sound& shot);
 
             void damage(int d);
 
@@ -61,7 +68,11 @@ namespace nasic
 
             void update(sf::RenderWindow& window, sf::Time dt);
 
-            virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const;
+            void updateProjectiles(sf::Time dt);
+            sf::Uint32 checkEnemyCollisions(sf::RenderWindow& window, std::list<nasic::enemy>& enemies, sf::Sprite& explosion, sf::Sound& explode, sf::SoundBuffer& buffer, sf::SoundBuffer& hitbuffer, thor::Animator<sf::Sprite, std::string>& explosionAnim, std::string animation, float scale);
+            bool checkBossCollisions(nasic::killer& k);
+
+            void draw(sf::RenderTarget& target, sf::RenderStates states) const;
 
             enum shipType
             {
@@ -83,6 +94,16 @@ namespace nasic
                 gun,
                 missle,
                 nuke
+            };
+
+            enum hitList
+            {
+                miss = 0,
+                agravu = 1,
+                delsiriak = 2,
+                gluorn = 3,
+                rhiians = 4,
+                hit = 5,
             };
 
         private:
@@ -111,6 +132,10 @@ namespace nasic
             sf::Uint32 m_state;
             sf::Uint32 m_type;
             sf::Uint32 m_ammo;
+
+            nasic::ammo* m_ammoPtr;
+            std::list<nasic::ammo> m_playerAmmo;
+            std::list<nasic::ammo>::iterator m_pAmmoIt;
     };
 }
 
