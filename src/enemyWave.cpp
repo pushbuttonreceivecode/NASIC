@@ -2,13 +2,14 @@
 
 nasic::enemyWave::enemyWave()
 {
-    m_enemyMoveFrames = sf::Time::Zero;
-    m_enemyFireFrames = sf::Time::Zero;
+
 }
 
 nasic::enemyWave::~enemyWave()
 {
-
+    //delete the member pointers on destruction of the enemy wave
+    //delete m_enemy;
+    delete m_ammoPtr;
 }
 
 void nasic::enemyWave::init(sf::RenderWindow& window, int rows, int columns, float scale)
@@ -71,9 +72,11 @@ void nasic::enemyWave::init(sf::RenderWindow& window, int rows, int columns, flo
             }
         }
     }
-    setInitStatus(true);//tell the caller initialization is done
+
     m_dir = 1;//set the direction of the enemy hoard to move right
     m_enemyMoveFrames = sf::Time::Zero;//reset the frames controlling movement
+    m_enemyFireFrames = sf::Time::Zero;//reset the frames controlling enemy fire
+    setInitStatus(true);//initialization is done!
 }
 
 void nasic::enemyWave::updateEnemies(sf::Time dt, float scale)

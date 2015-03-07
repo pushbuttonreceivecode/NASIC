@@ -10,3 +10,6 @@ Of course, the game isn't of much use without the assets to go with it. Those ar
 http://www.pushbuttonreceivecode.com/downloads/Not%20Another%20Space%20Invaders%20Clone.zip
 
 Thank you and enjoy!
+
+*********UPDATE*********
+Recent bug fixes and missing assets added. 

@@ -36,6 +36,10 @@ namespace nasic
     //to avoid circular references (enemyWave includes player)
     class enemyWave;
 
+    //forward declaration of nasic::killer
+    //to avoid circular references (killer includes player)
+    class killer;
+
     class player : public sf::Drawable, public sf::Transformable
     {
         public:
@@ -70,7 +74,7 @@ namespace nasic
 
             void updateProjectiles(sf::Time dt);
             sf::Uint32 checkEnemyCollisions(sf::RenderWindow& window, std::list<nasic::enemy>& enemies, sf::Sprite& explosion, sf::Sound& explode, sf::SoundBuffer& buffer, sf::SoundBuffer& hitbuffer, thor::Animator<sf::Sprite, std::string>& explosionAnim, std::string animation, float scale);
-            bool checkBossCollisions(nasic::killer& k);
+            bool checkBossCollisions(nasic::killer& killer, sf::Sprite& explosion, sf::Sound& explode, sf::SoundBuffer& buffer, thor::Animator<sf::Sprite, std::string>& explosionAnim, std::string animation);
 
             void draw(sf::RenderTarget& target, sf::RenderStates states) const;
 

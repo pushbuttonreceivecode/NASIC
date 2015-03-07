@@ -61,6 +61,8 @@ namespace nasic
             sf::Uint32 m_initialDif;
             sf::SoundBuffer m_transitionBuff;
             sf::Sound m_transition;
+            sf::SoundBuffer m_killerDeath;
+            sf::Sound m_killerScream;
     };
 }
 

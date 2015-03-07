@@ -365,7 +365,7 @@ sf::Uint32 nasic::player::checkEnemyCollisions(sf::RenderWindow& window, std::li
     return tempHit;
 }
 
-bool nasic::player::checkBossCollisions(nasic::killer& killer)
+bool nasic::player::checkBossCollisions(nasic::killer& killer, sf::Sprite& explosion, sf::Sound& explode, sf::SoundBuffer& buffer, thor::Animator<sf::Sprite, std::string>& explosionAnim, std::string animation)
 {
     std::list<nasic::ammo>::iterator playerAmmoIt;
     for(playerAmmoIt = m_playerAmmo.begin(); playerAmmoIt != m_playerAmmo.end(); ++playerAmmoIt)
@@ -375,6 +375,16 @@ bool nasic::player::checkBossCollisions(nasic::killer& killer)
                 && playerAmmoIt->getPosition().x < killer.getTargetPosition().x + killer.getTargetAABB().x
                 && playerAmmoIt->getPosition().x > killer.getTargetPosition().x)
         {
+            //set the explosion position to the enemy location
+            explosion.setPosition(playerAmmoIt->getPosition().x, playerAmmoIt->getPosition().y);
+
+            //set the explosion sound buffer and play it
+            explode.setBuffer(buffer);
+            explode.play();
+
+            //play the explosion animation
+            explosionAnim.playAnimation(animation, false);
+
             killer.damage(2);//this is arbitrary, adjust accordingly to alter the difficulty
             playerAmmoIt = m_playerAmmo.erase(playerAmmoIt);
             return true;
@@ -386,6 +396,8 @@ bool nasic::player::checkBossCollisions(nasic::killer& killer)
             return false;
         }
     }
+
+    return false;
 }
 
 void nasic::player::draw(sf::RenderTarget& target, sf::RenderStates states) const

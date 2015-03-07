@@ -27,7 +27,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 
 using namespace std;
 
-int main()
+int main(void)
 {
     try
     {

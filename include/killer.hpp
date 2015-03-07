@@ -8,6 +8,7 @@
 #include <particle.hpp>
 #include <interpolate.hpp>
 #include <ammo.hpp>
+#include <player.hpp>
 
 namespace nasic
 {
@@ -44,7 +45,7 @@ namespace nasic
             sf::Vector2f rightGunPosition(){return m_rightEarring.getPosition();};
 
             void fireAmmo(sf::Time dt, float scaleX, float scaleY);
-            sf::Uint32 checkCollisions(sf::RenderWindow& window, nasic::player& hero, float scaleX, float scaleY);
+            sf::Uint32 checkCollisions(sf::RenderWindow& window, nasic::player& hero, float scaleX, float scaleY, sf::Sprite& explosion, sf::Sound& explode, sf::SoundBuffer& buffer, thor::Animator<sf::Sprite, std::string>& explosionAnim, std::string animation);
 
             sf::Vector2f getTargetPosition(){return sf::Vector2f(m_eyeGlow.getPosition().x, m_eyeGlow.getPosition().y);};
             sf::Vector2f getTargetAABB(){return sf::Vector2f(m_eyeGlow.getSize().x, m_eyeGlow.getSize().y);};
@@ -54,6 +55,7 @@ namespace nasic
             int getHealth(){return m_health;};
 
             void speak(sf::Time dt);
+            bool speechIsDone(){return m_speechStatus;};
 
             void updateState();
             void toggleState(int s);//for debug purposes
@@ -145,6 +147,8 @@ namespace nasic
             sf::Time m_speechFrames;
             int m_speechSwitch;
             bool m_playSwitch;
+            bool m_deathSwitch;
+            bool m_speechStatus;
             unsigned int m_speechCounter;
     };
 }

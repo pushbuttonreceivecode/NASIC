@@ -196,6 +196,8 @@ void nasic::level::show(sf::RenderWindow& window)
     hero.setPosition(m_winsizeX/2.f, m_winsizeY/1.25f);
     sf::Uint32 initialLives =  m_numLives;
     sf::Uint32 accuracyRatio = 0;
+    sf::Uint32 playerToBossCollision = 0;
+    sf::Uint32 playerToEnemyCollision = 0;
     bool moveleft = false;
     bool moveright = false;
     bool moveup = false;
@@ -239,7 +241,7 @@ void nasic::level::show(sf::RenderWindow& window)
 
     //set up enemy stuff
     m_enemyWave.init(window, 4, 10, m_scaleX);
-    sf::Uint32 collision = 0;
+    sf::Uint32 enemyToPlayerCollision = 0;
     m_wave = 1;
     bool doBossFight = false;
 
@@ -251,6 +253,7 @@ void nasic::level::show(sf::RenderWindow& window)
     }
 
     m_killer.init(window, m_scaleX);
+    sf::Uint32 bossToPlayerCollision = 0;
 
     //some stuff to uniformly distribute the particles
     std::mt19937 engine;
@@ -461,11 +464,11 @@ void nasic::level::show(sf::RenderWindow& window)
                         if(m_lives.size() > 0)
                             m_lives.pop_back();
 
-                        std::cout<<"Number of lives: "<<m_numLives<<std::endl;
+                        //std::cout<<"Number of lives: "<<m_numLives<<std::endl;
                     }
                     else
                     {
-                        std::cout<<"Number of lives: "<<m_numLives<<std::endl;
+                        //std::cout<<"Number of lives: "<<m_numLives<<std::endl;
                         m_levelstate = levelstate::lost;
                         return;
                     }
@@ -713,14 +716,14 @@ void nasic::level::show(sf::RenderWindow& window)
                     hero.updateProjectiles(TimePerFrame);
 
                     //check collisions with enemies
-                    sf::Uint32 scorePoints = hero.checkEnemyCollisions(window, m_enemyWave.m_enemies, m_explosionSpr, m_explosion, m_explodBuff, m_hitBuff, m_expAnim, "explode", m_scaleX);
-                    if(scorePoints != nasic::player::hitList::miss)
+                    playerToEnemyCollision = hero.checkEnemyCollisions(window, m_enemyWave.m_enemies, m_explosionSpr, m_explosion, m_explodBuff, m_hitBuff, m_expAnim, "explode", m_scaleX);
+                    if(playerToEnemyCollision != nasic::player::hitList::miss)
                     {
                         //update the hit count
                         m_hits++;
 
                         //update the score
-                        switch(scorePoints)
+                        switch(playerToEnemyCollision)
                         {
                         case nasic::player::hitList::agravu:
                         {
@@ -778,13 +781,13 @@ void nasic::level::show(sf::RenderWindow& window)
                     //check collisions with enemies - because the value
                     //we're retrieving is an enumerated type and a miss = 0,
                     //we need to check if the value returned by collision is > 0
-                    collision = m_enemyWave.checkPlayerCollisions(window, hero, m_scaleX, m_explosionSpr, m_explosion, m_explodBuff, m_expAnim, "explode");
+                    enemyToPlayerCollision = m_enemyWave.checkPlayerCollisions(window, hero, m_scaleX, m_explosionSpr, m_explosion, m_explodBuff, m_expAnim, "explode");
 
-                    if(collision > 0)
+                    if(enemyToPlayerCollision > 0)
                     {
                             life.setFillColor(sf::Color(255,255,0,200));
 
-                            switch(collision)
+                            switch(enemyToPlayerCollision)
                             {
                             case nasic::enemyWave::hitList::agravu:
                             {
@@ -958,8 +961,6 @@ void nasic::level::show(sf::RenderWindow& window)
                 if(bossIntroFrames.asSeconds() < 1.f)
                     m_killer.move(0.f, m_scaleX*10.f*interpolate::expoEaseOut(bossIntroFrames.asSeconds(),0.f,1.f,1.f));
 
-                m_killer.speak(TimePerFrame);
-
                 if(bossIntroFrames.asSeconds() > 10.f && pauseSwitch != 1)
                 {
                     //////////////////////////////////////
@@ -968,124 +969,100 @@ void nasic::level::show(sf::RenderWindow& window)
 
                     m_killer.updateMotion(TimePerFrame, m_scaleX, m_scaleY);
                     m_killer.updateState();
+                    m_killer.speak(TimePerFrame);
 
                     //////////////////////////////////////////
                     //perform boss ammo and particle updates
                     //////////////////////////////////////////
 
-                    //instantiate as many particles as the frame rate will allow
+                    //instantiate as many particles as possible ;)
                     m_killer.initParticles(thorDistr());
 
                     //update particles
                     m_killer.updateParticles(TimePerFrame,m_scaleX);
                     m_killer.fireAmmo(TimePerFrame, m_scaleX, m_scaleY);
 
-                    if(m_killer.checkCollisions(window,hero, m_scaleX, m_scaleY) == nasic::killer::collisionType::gun)
-                    {
-                        //set the explosion position to the enemy location
-                        m_explosionSpr.setTexture(expTexture);
-                        m_explosionSpr.setPosition(hero.getPosition().x, hero.getPosition().y);
-                        m_expAnim.playAnimation("explode", false);
+                    bossToPlayerCollision = m_killer.checkCollisions(window,hero, m_scaleX, m_scaleY, m_explosionSpr, m_explosion, m_explodBuff, m_expAnim, "explode");
 
-                        //set the explosion sound buffer and play it
-                        m_explosion.setBuffer(m_explodBuff);
-                        m_explosion.play();
+                    if(bossToPlayerCollision > 0)
+                    {
 
                         life.setFillColor(sf::Color(255,255,0,200));
 
-                        if(hero.getHealth() <= 0 && m_numLives > 0)
+                        switch(bossToPlayerCollision)
                         {
-                            hero.heal(maxHealth);
-                            m_numLives -=1;
-                            if(m_lives.size() > 0)
-                                m_lives.pop_back();
-                        }
-                        else if(hero.getHealth() <=0 && m_numLives == 0) //player is a complete loser...
+                        case nasic::killer::collisionType::gun:
                         {
-                            m_levelstate = levelstate::lost;
-                            return;
+                            if(hero.getHealth() <= 0 && m_numLives > 0)
+                            {
+                                hero.heal(maxHealth);
+                                m_numLives -=1;
+                                if(m_lives.size() > 0)
+                                    m_lives.pop_back();
+                            }
+                            else if(hero.getHealth() <=0 && m_numLives == 0) //player is a complete loser...
+                            {
+                                m_levelstate = levelstate::lost;
+                                return;
+                            }
+                            else
+                                hero.damage(10);
                         }
-                        else
-                            hero.damage(10);
-                    }
+                        break;
 
-                    else if(m_killer.checkCollisions(window, hero, m_scaleX, m_scaleY) == nasic::killer::collisionType::cannon)
-                    {
-                        //set the explosion position to the player location
-                        m_explosionSpr.setTexture(expTexture);
-                        m_explosionSpr.setPosition(hero.getPosition().x, hero.getPosition().y);
-                        m_expAnim.playAnimation("explode", false);
-
-                        //set the explosion sound buffer and play it
-                        m_explosion.setBuffer(m_explodBuff);
-                        m_explosion.play();
-
-                        life.setFillColor(sf::Color(255,255,0,200));
-
-                        if(hero.getHealth() <= 0 && m_numLives > 0)
+                        case nasic::killer::collisionType::cannon:
                         {
-                            hero.heal(maxHealth);
-                            m_numLives -=1;
-                            if(m_lives.size() > 0)
-                                m_lives.pop_back();
+                            if(hero.getHealth() <= 0 && m_numLives > 0)
+                            {
+                                hero.heal(maxHealth);
+                                m_numLives -=1;
+                                if(m_lives.size() > 0)
+                                    m_lives.pop_back();
+                            }
+                            else if(hero.getHealth() <=0 && m_numLives == 0)//player is a complete loser...
+                            {
+                                m_levelstate = levelstate::lost;
+                                return;
+                            }
+                            else
+                                hero.damage(20);
                         }
-                        else if(hero.getHealth() <=0 && m_numLives == 0)//player is a complete loser...
+                        break;
+
+                        case nasic::killer::collisionType::missile:
                         {
-                            m_levelstate = levelstate::lost;
-                            return;
+                            if(hero.getHealth() <= 0 && m_numLives > 0)
+                            {
+                                hero.heal(maxHealth);
+                                m_numLives -=1;
+                                if(m_lives.size() > 0)
+                                    m_lives.pop_back();
+                            }
+                            else if(hero.getHealth() <=0 && m_numLives == 0) //player is a complete loser...
+                            {
+                                m_levelstate = levelstate::lost;
+                                return;
+                            }
+                            else
+                                hero.damage(30);
                         }
-                        else
-                            hero.damage(20);
-                    }
+                        break;
 
-                    else if(m_killer.checkCollisions(window, hero, m_scaleX, m_scaleY) == nasic::killer::collisionType::missile)
-                    {
-                        //set the explosion position to the enemy location
-                        m_explosionSpr.setTexture(expTexture);
-                        m_explosionSpr.setPosition(hero.getPosition().x, hero.getPosition().y);
-                        m_expAnim.playAnimation("explode", false);
-
-                        //set the explosion sound buffer and play it
-                        m_explosion.setBuffer(m_explodBuff);
-                        m_explosion.play();
-
-                        life.setFillColor(sf::Color(255,255,0,200));
-
-                        if(hero.getHealth() <= 0 && m_numLives > 0)
-                        {
-                            hero.heal(maxHealth);
-                            m_numLives -=1;
-                            if(m_lives.size() > 0)
-                                m_lives.pop_back();
+                        default:
+                            break;
                         }
-                        else if(hero.getHealth() <=0 && m_numLives == 0) //player is a complete loser...
-                        {
-                            m_levelstate = levelstate::lost;
-                            return;
-                        }
-                        else
-                            hero.damage(30);
                     }
 
                     else
-                    {
                         life.setFillColor(sf::Color(0,255,0,200));
-                    }
 
                     //update the player's bullets
                     hero.updateProjectiles(TimePerFrame);
 
                     //check for collisions against the boss
-                    if(hero.checkBossCollisions(m_killer))
+                    playerToBossCollision = hero.checkBossCollisions(m_killer, m_explosionSpr, m_explosion, m_explodBuff, m_expAnim, "explode");
+                    if(playerToBossCollision)
                     {
-                        //play the explosion animation
-                        m_explosionSpr.setTexture(blood);
-                        m_expAnim.playAnimation("explode", false);
-
-                        //set the explosion sound buffer and play it
-                        m_explosion.setBuffer(m_explodBuff);
-                        m_explosion.play();
-
                         m_score += 100;
 
                         bossHealth.setFillColor(sf::Color(255,155,0,200));
@@ -1093,7 +1070,7 @@ void nasic::level::show(sf::RenderWindow& window)
                         //update the hit count
                         m_hits++;
 
-                        if(m_killer.getHealth() <= 0 && hero.getHealth() > 0)
+                        if(m_killer.getHealth() <= 0 && hero.getHealth() > 0 && m_killer.speechIsDone())
                             m_wave = 5;//winner screen!!!
 
                     }
@@ -1102,6 +1079,7 @@ void nasic::level::show(sf::RenderWindow& window)
                     {
                         //update the miss count
                         m_misses++;
+                        m_score += 0;
                         bossHealth.setFillColor(sf::Color(200,0,0,200));
                     }
 
@@ -1139,25 +1117,37 @@ void nasic::level::show(sf::RenderWindow& window)
 
         window.draw(stars);
 
-        if(m_wave < 4)
+        //draw the enemy wave if it has been
+        //initialized and the current wave
+        //is < 4 (i.e. not the boss fight)
+        if(m_enemyWave.initStatus() && m_wave < 4)
             window.draw(m_enemyWave);
 
         window.draw(hero);
 
-        if(m_wave == 4)
-        {
-            window.draw(bossHealthLabel);
-            bossHealth.setSize(sf::Vector2f(m_scaleX*m_killer.getHealth(),m_scaleX*5.f));
-            window.draw(bossHealth);
-
-            window.draw(m_killer);
-        }
-
-        if(m_expAnim.isPlayingAnimation())
-            window.draw(m_explosionSpr);
+        //begin drawing the HUD elements
+        //on the screen
 
         window.draw(bottomBG);
         window.draw(bottomLine);
+
+        if(m_wave == 4)
+        {
+            window.draw(bossHealthLabel);
+
+            //scale the rectangle representing
+            //Killer's health according to his remaining health
+            bossHealth.setSize(sf::Vector2f(m_scaleX*m_killer.getHealth(),m_scaleX*5.f));
+
+            window.draw(bossHealth);
+
+            window.draw(m_killer);//not an HUD item, but we'll stuff it in here too...
+        }
+
+        //weird placement, but must be here to
+        //make sure it draws over enemies
+        if(m_expAnim.isPlayingAnimation())
+            window.draw(m_explosionSpr);
 
         window.draw(score);
 

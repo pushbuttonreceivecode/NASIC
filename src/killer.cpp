@@ -5,6 +5,12 @@ nasic::killer::killer()
 {
     m_health = 100;
     m_killerState = killerState::normal;
+    m_speechStatus = false;
+    m_speechSwitch = 1;
+    m_playSwitch = false;
+    m_deathSwitch = false;
+    m_speechStatus = false;
+    m_speechCounter = 0;
 }
 
 nasic::killer::~killer()
@@ -166,51 +172,60 @@ void nasic::killer::init(sf::RenderWindow& window, float scale)
 
 void nasic::killer::speak(sf::Time dt)
 {
-    if(m_speechSwitch == 1 && m_playSwitch)
-    {
-        m_vocals.setBuffer(m_laughBuffer);
-    }
+    m_deathSwitch = m_killerState == killerState::dead ? true : false;
 
-    else if(m_speechSwitch == -1 && m_playSwitch)
-    {
-        m_vocals.setBuffer(m_tauntBuffer);
-
-    }
-
-    if(m_killerState == killerState::dead)
-    {
+    if(m_deathSwitch){
         m_vocals.setBuffer(m_deadBuffer);
-        m_playSwitch = true;
-    }
-
-    if(m_speechCounter == 1)
-    {
         m_vocals.play();
+        m_speechStatus = m_vocals.getStatus() == sf::Sound::Playing ? false : true;
     }
 
-    /////////////////////////////////////////////
-    //do the housekeeping necessary to play
-    //the sounds and stop them from repeating
-    /////////////////////////////////////////////
+    else{
+        if(m_speechSwitch == 1 && m_playSwitch)
+        {
+            m_vocals.setBuffer(m_laughBuffer);
+        }
 
-    if(m_speechFrames.asSeconds() > 10.f)//say something every 10 seconds
-    {
-        m_speechSwitch *= -1;
-        m_playSwitch = true;
-        m_speechFrames = sf::Time::Zero;
+        else if(m_speechSwitch == -1 && m_playSwitch)
+        {
+            m_vocals.setBuffer(m_tauntBuffer);
+
+        }
+
+        if(m_speechCounter == 1)
+        {
+            m_vocals.play();
+        }
+
+        if(m_vocals.getStatus() == sf::Sound::Stopped)
+            m_speechStatus = true;
+        else
+            m_speechStatus = false;
+
+        /////////////////////////////////////////////
+        //do the housekeeping necessary to play
+        //the sounds and stop them from repeating
+        /////////////////////////////////////////////
+
+        if(m_speechFrames.asSeconds() > 10.f)//say something every 10 seconds
+        {
+            m_speechSwitch *= -1;
+            m_playSwitch = true;
+            m_speechFrames = sf::Time::Zero;
+        }
+
+        else
+        {
+            m_playSwitch = false;
+            m_speechFrames += dt;
+        }
+
+        if(!m_playSwitch)
+            m_speechCounter = 0;
+
+        else
+            ++m_speechCounter;
     }
-
-    else
-    {
-        m_playSwitch = false;
-        m_speechFrames += dt;
-    }
-
-    if(!m_playSwitch)
-        m_speechCounter = 0;
-
-    else
-        ++m_speechCounter;
 
 }
 
@@ -346,7 +361,7 @@ void nasic::killer::fireAmmo(sf::Time dt, float scaleX, float scaleY)
     }
 }
 
-sf::Uint32 nasic::killer::checkCollisions(sf::RenderWindow& window, nasic::player& hero, float scaleX, float scaleY)
+sf::Uint32 nasic::killer::checkCollisions(sf::RenderWindow& window, nasic::player& hero, float scaleX, float scaleY, sf::Sprite& explosion, sf::Sound& explode, sf::SoundBuffer& buffer, thor::Animator<sf::Sprite, std::string>& explosionAnim, std::string animation)
 {
     //////////////////////////////////////
     //handle ammo/missiles leaving screen
@@ -368,6 +383,16 @@ sf::Uint32 nasic::killer::checkCollisions(sf::RenderWindow& window, nasic::playe
                 && ammoIt->getPosition().x >= hero.getPosition().x
                 && ammoIt->getPosition().x <= hero.getPosition().x + scaleX*hero.getAABB().x)
             {
+                //set the explosion position to the enemy location
+                explosion.setPosition(ammoIt->getPosition().x, ammoIt->getPosition().y);
+
+                //set the explosion sound buffer and play it
+                explode.setBuffer(buffer);
+                explode.play();
+
+                //play the explosion animation
+                explosionAnim.playAnimation(animation, false);
+
                 ammoIt = m_enemyAmmo.erase(ammoIt);//delete missed shots...
                 return collisionType::gun;//we've got a hit!!
             }
@@ -391,6 +416,16 @@ sf::Uint32 nasic::killer::checkCollisions(sf::RenderWindow& window, nasic::playe
                 && missileIt->getPosition().x >= hero.getPosition().x
                 && missileIt->getPosition().x <= hero.getPosition().x + scaleX*hero.getAABB().x)
             {
+                //set the explosion position to the enemy location
+                explosion.setPosition(missileIt->getPosition().x, missileIt->getPosition().y);
+
+                //set the explosion sound buffer and play it
+                explode.setBuffer(buffer);
+                explode.play();
+
+                //play the explosion animation
+                explosionAnim.playAnimation(animation, false);
+
                 missileIt = m_missileAmmo.erase(missileIt);
                 return collisionType::missile;//we've got a hit!!
             }

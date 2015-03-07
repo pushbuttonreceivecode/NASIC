@@ -57,6 +57,14 @@ nasic::youwin::youwin()
     }
     m_transition.setBuffer(m_transitionBuff);
     m_transition.setVolume(m_initialEff);
+
+    //load killer death-moan
+    if(!m_killerDeath.loadFromFile("sound/noooo.wav"))
+    {
+        std::cerr<<"Could not load noooo.wav."<<std::endl;
+    }
+    m_killerScream.setBuffer(m_killerDeath);
+    m_killerScream.setVolume(m_initialEff*1.5f);
 }
 
 nasic::youwin::~youwin()
@@ -82,6 +90,9 @@ void nasic::youwin::show(sf::RenderWindow& window)
 
     //play the transition sound...
     m_transition.play();
+
+    //play killer scream
+    m_killerScream.play();
 
     //set up the graphics
     sf::Font myfont;

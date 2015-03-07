@@ -76,7 +76,8 @@ void nasic::info::show(sf::RenderWindow& window)
     //we're blowing up small images...
     //this is not ideal for non-retro-looking sprites
     sf::VideoMode mode = sf::VideoMode::getDesktopMode();
-    float scale = mode.width/800.f;
+    float scaleX = mode.width/800.f;
+    float scaleY = mode.height/600.f;
 
     window.setKeyRepeatEnabled(false);
     window.setFramerateLimit(60);//set the refresh limit to the current frame rate 60fps
@@ -99,7 +100,7 @@ void nasic::info::show(sf::RenderWindow& window)
 
     sf::Text information("", myfont, 20);
     information.setOrigin(information.getGlobalBounds().width/2.f, information.getGlobalBounds().height/2.f);
-    information.setScale(scale,scale);
+    information.setScale(scaleX,scaleX);
 
     //graphics...
     sf::Texture tex;
@@ -117,19 +118,19 @@ void nasic::info::show(sf::RenderWindow& window)
     m_bgTwo.setOrigin(0.f,0.f);
     m_bgThree.setOrigin(0.f,0.f);
     m_bgFour.setOrigin(0.f,0.f);
-    m_bgOne.setScale(scale,scale);
-    m_bgTwo.setScale(scale,scale);
-    m_bgThree.setScale(scale,scale);
-    m_bgFour.setScale(scale,scale);
+    m_bgOne.setScale(scaleX,scaleY);
+    m_bgTwo.setScale(scaleX,scaleY);
+    m_bgThree.setScale(scaleX,scaleY);
+    m_bgFour.setScale(scaleX,scaleY);
     float w = m_bgOne.getGlobalBounds().width;
     float h = m_bgOne.getGlobalBounds().height;
     m_bgOne.setPosition(0.f,0.f);
     m_bgTwo.setPosition(w,-h);
     m_bgThree.setPosition(0.f,-h);
-    m_bgFour.setPosition(w-1,0.f-1);
+    m_bgFour.setPosition(w,0.f);
 
     //hexgrid
-    nasic::hexgrid hex(window,nasic::hexgrid::hexStyle::translucent,scale);
+    nasic::hexgrid hex(window,nasic::hexgrid::hexStyle::translucent,scaleX);
 
     //left side panel
     thor::ConcaveShape panel;
@@ -165,27 +166,27 @@ void nasic::info::show(sf::RenderWindow& window)
     canvas.setPoint(5, sf::Vector2f(window.getSize().x/7.f, window.getSize().y/1.1f));
     canvas.setPoint(6, sf::Vector2f(window.getSize().x/6.f, window.getSize().y/2.f));
     canvas.setFillColor(sf::Color(200,100,0,200));
-    information.setPosition(canvas.getPoint(0).x + scale*15.f, canvas.getPoint(0).y + scale*25.f);//set information position according to the canvas
+    information.setPosition(canvas.getPoint(0).x + scaleX*15.f, canvas.getPoint(0).y + scaleX*25.f);//set information position according to the canvas
 
     //selections
     sf::Text infoLabel("Info", myfont, 32);
-    infoLabel.setScale(scale,scale);
-    infoLabel.setPosition(-scale*100.f, window.getSize().y/4.f);
+    infoLabel.setScale(scaleX,scaleX);
+    infoLabel.setPosition(-scaleX*100.f, window.getSize().y/4.f);
     infoLabel.setColor(sf::Color(0,100,100,255));
 
     sf::Text webLabel("Web", myfont, 32);
-    webLabel.setScale(scale,scale);
-    webLabel.setPosition(-scale*100.f, infoLabel.getPosition().y + infoLabel.getGlobalBounds().height*2.f);
+    webLabel.setScale(scaleX,scaleX);
+    webLabel.setPosition(-scaleX*100.f, infoLabel.getPosition().y + infoLabel.getGlobalBounds().height*2.f);
     webLabel.setColor(sf::Color(0,100,0,255));
 
     sf::Text creditLabel("Credits", myfont, 32);
-    creditLabel.setScale(scale,scale);
-    creditLabel.setPosition(-scale*100.f, webLabel.getPosition().y + infoLabel.getGlobalBounds().height*2.f);
+    creditLabel.setScale(scaleX,scaleX);
+    creditLabel.setPosition(-scaleX*100.f, webLabel.getPosition().y + infoLabel.getGlobalBounds().height*2.f);
     creditLabel.setColor(sf::Color(100,0,100,255));
 
     sf::Text resourcesLabel("Assets", myfont, 32);
-    resourcesLabel.setScale(scale,scale);
-    resourcesLabel.setPosition(-scale*100.f, creditLabel.getPosition().y + infoLabel.getGlobalBounds().height*2.f);
+    resourcesLabel.setScale(scaleX,scaleX);
+    resourcesLabel.setPosition(-scaleX*100.f, creditLabel.getPosition().y + infoLabel.getGlobalBounds().height*2.f);
     resourcesLabel.setColor(sf::Color(0,0,255,255));
 
     sf::Texture spinnerTexture;
@@ -198,7 +199,7 @@ void nasic::info::show(sf::RenderWindow& window)
     spinner.setTexture(spinnerTexture);
     spinner.setColor(sf::Color(255,255,255,200));
     spinner.setOrigin(spinner.getGlobalBounds().width/2.f, spinner.getGlobalBounds().height/2.f);
-    spinner.setScale(scale,scale);
+    spinner.setScale(scaleX,scaleX);
     spinner.setPosition(infoLabel.getPosition().x, infoLabel.getPosition().y+infoLabel.getGlobalBounds().height);
 
     //sound
@@ -358,22 +359,22 @@ void nasic::info::show(sf::RenderWindow& window)
             //text fly in
             if(flyInFrames.asSeconds() < 1.f)
             {
-                infoLabel.move(scale*interpolate::quarticEaseOut(flyInFrames.asSeconds(),0.f,10.f,1.f), 0.f);
-                webLabel.move(scale*interpolate::quarticEaseOut(flyInFrames.asSeconds(),0.f,10.f,1.f), 0.f);
-                creditLabel.move(scale*interpolate::quarticEaseOut(flyInFrames.asSeconds(),0.f,10.f,1.f), 0.f);
-                resourcesLabel.move(scale*interpolate::quarticEaseOut(flyInFrames.asSeconds(),0.f,10.f,1.f), 0.f);
+                infoLabel.move(scaleX*interpolate::quarticEaseOut(flyInFrames.asSeconds(),0.f,10.f,1.f), 0.f);
+                webLabel.move(scaleX*interpolate::quarticEaseOut(flyInFrames.asSeconds(),0.f,10.f,1.f), 0.f);
+                creditLabel.move(scaleX*interpolate::quarticEaseOut(flyInFrames.asSeconds(),0.f,10.f,1.f), 0.f);
+                resourcesLabel.move(scaleX*interpolate::quarticEaseOut(flyInFrames.asSeconds(),0.f,10.f,1.f), 0.f);
             }
 
             //spinner animation
             if(spinnerFrames.asSeconds() < 4.f)
             {
-                spinner.rotate(scale*10.f*interpolate::cubicEaseOut(spinnerFrames.asSeconds(),0.f,1.f,4.f));
+                spinner.rotate(scaleX*10.f*interpolate::cubicEaseOut(spinnerFrames.asSeconds(),0.f,1.f,4.f));
             }
 
             if(scaleFrames.asSeconds() < 2.f)
             {
                 if(scaleFrames.asSeconds() < 2.f)
-                    spinner.setScale(fabs(interpolate::elasticEaseOut(scaleFrames.asSeconds(),0.f,scale*1.45f,2.f)),fabs(interpolate::elasticEaseOut(scaleFrames.asSeconds(),0.f,scale*1.45f,2.f)));
+                    spinner.setScale(fabs(interpolate::elasticEaseOut(scaleFrames.asSeconds(),0.f,scaleX*1.45f,2.f)),fabs(interpolate::elasticEaseOut(scaleFrames.asSeconds(),0.f,scaleX*1.45f,2.f)));
             }
 
             if(m_bgOne.getPosition().y >= h && m_bgOne.getPosition().x <= 0.f)
@@ -381,28 +382,28 @@ void nasic::info::show(sf::RenderWindow& window)
                 m_bgOne.setPosition(w,-h);
             }
             else
-                m_bgOne.move(-30.f*scale*TimePerFrame.asSeconds(), 30.f*scale*TimePerFrame.asSeconds());
+                m_bgOne.move(-30.f*scaleX*TimePerFrame.asSeconds(), 30.f*scaleY*TimePerFrame.asSeconds());
 
             if(m_bgTwo.getPosition().y >= h && m_bgTwo.getPosition().x <= 0.f)
             {
                 m_bgTwo.setPosition(w,-h);
             }
             else
-                m_bgTwo.move(-30.f*scale*TimePerFrame.asSeconds(), 30.f*scale*TimePerFrame.asSeconds());
+                m_bgTwo.move(-30.f*scaleX*TimePerFrame.asSeconds(), 30.f*scaleY*TimePerFrame.asSeconds());
 
             if(m_bgThree.getPosition().y >= 0)
             {
                 m_bgThree.setPosition(0.f,-h);
             }
             else
-                m_bgThree.move(-30.f*scale*TimePerFrame.asSeconds(), 30.f*scale*TimePerFrame.asSeconds());
+                m_bgThree.move(-30.f*scaleX*TimePerFrame.asSeconds(), 30.f*scaleY*TimePerFrame.asSeconds());
 
             if(m_bgFour.getPosition().y >= h)
             {
                 m_bgFour.setPosition(w,0.f);
             }
             else
-                m_bgFour.move(-30.f*scale*TimePerFrame.asSeconds(), 30.f*scale*TimePerFrame.asSeconds());
+                m_bgFour.move(-30.f*scaleX*TimePerFrame.asSeconds(), 30.f*scaleY*TimePerFrame.asSeconds());
         }
 
         window.clear(sf::Color(55,55,55,255));
